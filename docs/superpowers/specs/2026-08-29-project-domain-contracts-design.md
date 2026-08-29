@@ -1,6 +1,6 @@
 # Milestone 3 Project Domain Contracts Design
 
-**Status:** Approved in conversation; awaiting written-spec review
+**Status:** Approved for implementation
 
 **Date:** 2026-08-29
 
