@@ -20,17 +20,18 @@ function makeState(): IdentityState {
 function makeService(overrides: Partial<IdentityService> = {}) {
   let signInCalls = 0;
   let signOutCalls = 0;
+  const signIn = overrides.signIn ?? (async () => ({ ok: true as const, data: session }));
   const service: IdentityService = {
     restore: async () => ({ ok: true, data: null }),
-    signIn: async () => {
-      signInCalls += 1;
-      return { ok: true, data: session };
-    },
     updateProfile: async () => ({ ok: true, data: session.user }),
     signOut: async () => {
       signOutCalls += 1;
     },
     ...overrides,
+    signIn: async () => {
+      signInCalls += 1;
+      return signIn();
+    },
   };
   return { service, getSignInCalls: () => signInCalls, getSignOutCalls: () => signOutCalls };
 }
@@ -97,6 +98,7 @@ describe("identity controller", () => {
 
     const first = controller.requestAuthenticatedAccess(async () => true);
     const second = controller.requestAuthenticatedAccess(async () => true);
+    await Promise.resolve();
     resolveSignIn({ ok: true, data: session });
 
     await expect(Promise.all([first, second])).resolves.toEqual([
@@ -110,7 +112,7 @@ describe("identity controller", () => {
     const { service } = makeService({
       signIn: async () => ({ ok: false, error: { code: "SESSION_EXPIRED" } }),
     });
-    const state: IdentityState = { status: "authenticated", session, failure: null };
+    const state: IdentityState = { status: "guest", session: null, failure: null };
 
     const result = await createIdentityController(service, state)
       .requestAuthenticatedAccess(async () => true);
