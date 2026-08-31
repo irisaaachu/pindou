@@ -47,6 +47,7 @@ export function createIdentityRuntime(
       if (state.status === "authenticated" && state.session) {
         return { ok: true, data: state.session };
       }
+      if (state.status === "restoring" || state.status === "signing-in") return null;
       runtime.consentVisible = true;
       return null;
     },

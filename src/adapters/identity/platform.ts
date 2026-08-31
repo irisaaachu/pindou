@@ -5,6 +5,12 @@ type Platform = IdentityPlatformDependencies["platform"];
 
 export type AvatarFile = Exclude<ProfileDraft["avatar"], null>;
 
+type AvatarReadDependencies = {
+  getFileInfo(filePath: string): Promise<{ size: number }>;
+  readFile(filePath: string): Promise<string>;
+  base64ToArrayBuffer(base64: string): ArrayBuffer;
+};
+
 function unsupported(): Promise<never> {
   return Promise.reject(new Error("PLATFORM_UNSUPPORTED"));
 }
@@ -51,11 +57,11 @@ export function createIdentityPlatformDependencies(): IdentityPlatformDependenci
 
 export async function readTemporaryAvatarFile(filePath: string): Promise<AvatarFile> {
   // #ifdef MP-WEIXIN
-  const [fileInfo, base64] = await Promise.all([
-    new Promise<{ size: number }>((resolve, reject) => {
+  return readAvatarFile({
+    getFileInfo: () => new Promise((resolve, reject) => {
       uni.getFileInfo({ filePath, success: ({ size }) => resolve({ size }), fail: reject });
     }),
-    new Promise<string>((resolve, reject) => {
+    readFile: () => new Promise((resolve, reject) => {
       uni.getFileSystemManager().readFile({
         filePath,
         encoding: "base64",
@@ -63,14 +69,25 @@ export async function readTemporaryAvatarFile(filePath: string): Promise<AvatarF
         fail: reject,
       });
     }),
-  ]);
-  const bytes = new Uint8Array(uni.base64ToArrayBuffer(base64));
-  const mimeType = avatarMimeType(bytes);
-  return { base64, size: fileInfo.size, mimeType };
+    base64ToArrayBuffer: uni.base64ToArrayBuffer,
+  }, filePath);
   // #endif
   // #ifndef MP-WEIXIN
   throw new Error("PLATFORM_UNSUPPORTED");
   // #endif
+}
+
+export async function readAvatarFile(
+  dependencies: AvatarReadDependencies,
+  filePath: string,
+): Promise<AvatarFile> {
+  const fileInfo = await dependencies.getFileInfo(filePath);
+  if (!Number.isInteger(fileInfo.size) || fileInfo.size < 1 || fileInfo.size > 1_048_576) {
+    throw new Error("INVALID_PROFILE");
+  }
+  const base64 = await dependencies.readFile(filePath);
+  const bytes = new Uint8Array(dependencies.base64ToArrayBuffer(base64));
+  return { base64, size: fileInfo.size, mimeType: avatarMimeType(bytes) };
 }
 
 function avatarMimeType(bytes: Uint8Array): "image/jpeg" | "image/png" {

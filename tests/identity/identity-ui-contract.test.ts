@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { createIdentityRuntime, getIdentityPresentation } from "../../src/application/identity/runtime";
+import { readAvatarFile } from "../../src/adapters/identity/platform";
 import type { IdentityService, IdentitySession, ProfileDraft } from "../../src/domain/identity";
 
 const session: IdentitySession = {
@@ -45,6 +46,47 @@ describe("identity UI runtime", () => {
 
     expect(service.signIn).toHaveBeenCalledTimes(1);
     expect(runtime.state.status).toBe("authenticated");
+  });
+
+  test.each(["restoring", "signing-in"] as const)("does not open another consent dialog while identity is %s", async (status) => {
+    let releaseRestore!: (value: { ok: true; data: null }) => void;
+    const service = makeService({
+      restore: vi.fn(() => new Promise((resolve) => { releaseRestore = resolve; })),
+    });
+    const runtime = createIdentityRuntime(service);
+
+    const restoring = runtime.initialize();
+    if (status === "signing-in") {
+      releaseRestore({ ok: true, data: null });
+      await restoring;
+      let releaseSignIn!: (value: { ok: true; data: IdentitySession }) => void;
+      service.signIn = vi.fn(() => new Promise((resolve) => { releaseSignIn = resolve; }));
+      await runtime.requestAuthenticatedAccess();
+      const signingIn = runtime.approveConsent();
+      await Promise.resolve();
+      expect(runtime.state.status).toBe("signing-in");
+      await runtime.requestAuthenticatedAccess();
+      expect(runtime.consentVisible).toBe(false);
+      releaseSignIn({ ok: true, data: session });
+      await signingIn;
+      return;
+    }
+
+    await runtime.requestAuthenticatedAccess();
+
+    expect(runtime.consentVisible).toBe(false);
+    releaseRestore({ ok: true, data: null });
+    await restoring;
+  });
+
+  test("allows a stable error state to open consent for a retry", async () => {
+    const service = makeService({ restore: vi.fn(async () => ({ ok: false as const, error: { code: "LOGIN_FAILED" as const } })) });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+
+    await runtime.requestAuthenticatedAccess();
+
+    expect(runtime.consentVisible).toBe(true);
   });
 
   test("cancels consent silently without calling the identity service", async () => {
@@ -111,5 +153,17 @@ describe("identity UI runtime", () => {
     expect(getIdentityPresentation({ status: "guest", session: null, failure: null }).privacy).toBe(
       "微信登录不会上传你的原始创作照片。",
     );
+  });
+
+  test("rejects an oversized avatar before reading its base64 data", async () => {
+    const calls: string[] = [];
+
+    await expect(readAvatarFile({
+      getFileInfo: async () => { calls.push("file-info"); return { size: 1_048_577 }; },
+      readFile: async () => { calls.push("read-file"); return "iVBORw0KGgo="; },
+      base64ToArrayBuffer: () => new ArrayBuffer(0),
+    }, "wxfile://avatar")).rejects.toThrow("INVALID_PROFILE");
+
+    expect(calls).toEqual(["file-info"]);
   });
 });
