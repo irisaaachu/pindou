@@ -3,6 +3,8 @@ import type { IdentityPlatformDependencies } from "./uni-cloud-identity-service"
 
 type Platform = IdentityPlatformDependencies["platform"];
 
+export type AvatarFile = Exclude<ProfileDraft["avatar"], null>;
+
 function unsupported(): Promise<never> {
   return Promise.reject(new Error("PLATFORM_UNSUPPORTED"));
 }
@@ -45,4 +47,39 @@ export function createIdentityPlatformDependencies(): IdentityPlatformDependenci
     writeStorage: (key, value) => uni.setStorageSync(key, value),
     removeStorage: (key) => uni.removeStorageSync(key),
   };
+}
+
+export async function readTemporaryAvatarFile(filePath: string): Promise<AvatarFile> {
+  // #ifdef MP-WEIXIN
+  const [fileInfo, base64] = await Promise.all([
+    new Promise<{ size: number }>((resolve, reject) => {
+      uni.getFileInfo({ filePath, success: ({ size }) => resolve({ size }), fail: reject });
+    }),
+    new Promise<string>((resolve, reject) => {
+      uni.getFileSystemManager().readFile({
+        filePath,
+        encoding: "base64",
+        success: ({ data }) => typeof data === "string" ? resolve(data) : reject(new Error("INVALID_PROFILE")),
+        fail: reject,
+      });
+    }),
+  ]);
+  const bytes = new Uint8Array(uni.base64ToArrayBuffer(base64));
+  const mimeType = avatarMimeType(bytes);
+  return { base64, size: fileInfo.size, mimeType };
+  // #endif
+  // #ifndef MP-WEIXIN
+  throw new Error("PLATFORM_UNSUPPORTED");
+  // #endif
+}
+
+function avatarMimeType(bytes: Uint8Array): "image/jpeg" | "image/png" {
+  const isPng = bytes.length >= 8
+    && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+    && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+  if (isPng) return "image/png";
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  throw new Error("INVALID_PROFILE");
 }

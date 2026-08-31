@@ -1,22 +1,22 @@
 <template>
   <view class="app-page my-page">
     <view class="profile-card surface-card">
-      <view class="profile-card__avatar">P</view>
+      <view class="profile-card__avatar">{{ avatarLetter }}</view>
       <view class="profile-card__content">
         <text class="eyebrow">Pindou member</text>
-        <text class="section-title">游客状态</text>
-        <text class="section-copy">头像和昵称以后可以自愿设置，不影响本地生成与导出。</text>
+        <text class="section-title">{{ presentation.title }}</text>
+        <text class="section-copy">{{ presentation.detail }}</text>
       </view>
-      <text class="soft-badge">未登录</text>
+      <text class="soft-badge">{{ identityLabel }}</text>
     </view>
 
     <view class="settings surface-card">
-      <view class="settings__row">
+      <view class="settings__row settings__row--action" @tap="handleProfileAction">
         <view>
           <text class="settings__title">头像与昵称</text>
-          <text class="settings__copy">可选资料，云功能接入后开放</text>
+          <text class="settings__copy">{{ presentation.privacy }}</text>
         </view>
-        <text class="settings__status">稍后开放</text>
+        <text class="settings__status">{{ presentation.action }}</text>
       </view>
       <view class="settings__row">
         <view>
@@ -38,10 +38,54 @@
       <text class="my-note__title">先创作，再决定是否登录。</text>
       <text class="section-copy">只有保存或查看云作品时才会触发微信身份授权。</text>
     </view>
+
+    <ConsentDialog
+      :visible="identityRuntime.consentVisible"
+      @approve="identityRuntime.approveConsent"
+      @decline="identityRuntime.declineConsent"
+    />
+    <ProfileEditor
+      :visible="identityRuntime.profileEditorVisible"
+      :user="identityRuntime.state.session?.user || null"
+      :saving="identityRuntime.profileSaving"
+      :supported="identityRuntime.profileEditingSupported"
+      :read-avatar="readTemporaryAvatarFile"
+      @close="identityRuntime.closeProfileEditor"
+      @save="saveProfile"
+    />
   </view>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { computed } from "vue";
+
+import { readTemporaryAvatarFile } from "../../adapters/identity/platform";
+import ConsentDialog from "../../components/identity/ConsentDialog.vue";
+import ProfileEditor from "../../components/identity/ProfileEditor.vue";
+import { getIdentityPresentation, identityRuntime } from "../../application/identity/runtime";
+import type { ProfileDraft } from "../../domain/identity";
+
+const presentation = computed(() => getIdentityPresentation(identityRuntime.state));
+const avatarLetter = computed(() => (identityRuntime.state.session?.user.nickname || "P").slice(0, 1));
+const identityLabel = computed(() => {
+  if (identityRuntime.state.status === "authenticated") return "已登录";
+  if (identityRuntime.state.status === "restoring" || identityRuntime.state.status === "signing-in") return "处理中";
+  if (identityRuntime.state.status === "error") return "需重试";
+  return "未登录";
+});
+
+function handleProfileAction(): void {
+  if (identityRuntime.state.status === "authenticated") {
+    identityRuntime.openProfileEditor();
+    return;
+  }
+  void identityRuntime.requestAuthenticatedAccess();
+}
+
+function saveProfile(draft: ProfileDraft): void {
+  void identityRuntime.saveProfile(draft);
+}
+</script>
 
 <style scoped>
 .my-page {
