@@ -4,6 +4,8 @@ const { createInstance } = require("uni-id-common");
 const { failure, success, toPublicFailure } = require("pindou-cloud-common");
 const { buildProfileUpdate } = require("./profile-core");
 
+const identityRequired = Symbol("identity-required");
+
 function invalidRequest() {
   return publicError("INVALID_REQUEST");
 }
@@ -19,14 +21,14 @@ module.exports = {
     try {
       const uniIdCommon = createInstance({ clientInfo: this.getClientInfo() });
       const token = this.getUniIdToken();
-      if (typeof token !== "string" || !token) throw publicError("IDENTITY_REQUIRED");
+      if (typeof token !== "string" || !token) throw identityRequired;
       const result = await uniIdCommon.checkToken(token);
       if (!result || result.errCode !== 0 || typeof result.uid !== "string" || !result.uid) {
-        throw publicError("IDENTITY_REQUIRED");
+        throw identityRequired;
       }
       this.verifiedUid = result.uid;
     } catch (error) {
-      if (error && error.code === "IDENTITY_REQUIRED") throw error;
+      if (error === identityRequired) throw publicError("IDENTITY_REQUIRED");
       throw publicError("INTERNAL_ERROR");
     }
   },

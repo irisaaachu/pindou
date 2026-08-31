@@ -92,9 +92,22 @@ describe("pindou profile core", () => {
 });
 
 describe("pindou profile cloud object", () => {
-  test("uses only the checked token UID for reads, avatar paths, and profile updates", async () => {
+  test("getProfile reads only the checked token UID", async () => {
     const fixture = loadCloudObject({ uid: "verified-user" });
-    const context = makeContext(fixture.cloudObject);
+    const context = { ...makeContext(fixture.cloudObject), uid: "attacker" };
+
+    await fixture.cloudObject._before.call(context);
+    const result = await fixture.cloudObject.getProfile.call(context);
+
+    expect(fixture.checkToken).toHaveBeenCalledWith("valid-token");
+    expect(fixture.doc.mock.calls).toEqual([["verified-user"]]);
+    expect(fixture.doc).not.toHaveBeenCalledWith("attacker");
+    expect(result).toEqual({ ok: true, data: { uid: "verified-user" } });
+  });
+
+  test("updateProfile ignores attacker identity fields and uses only the checked UID", async () => {
+    const fixture = loadCloudObject({ uid: "verified-user" });
+    const context = { ...makeContext(fixture.cloudObject), uid: "attacker" };
 
     await fixture.cloudObject._before.call(context);
     const result = await fixture.cloudObject.updateProfile.call(context, {
@@ -111,7 +124,8 @@ describe("pindou profile cloud object", () => {
     });
 
     expect(fixture.checkToken).toHaveBeenCalledWith("valid-token");
-    expect(fixture.doc).toHaveBeenCalledWith("verified-user");
+    expect(fixture.doc.mock.calls).toEqual([["verified-user"], ["verified-user"]]);
+    expect(fixture.doc).not.toHaveBeenCalledWith("attacker");
     expect(fixture.uploadFile).toHaveBeenCalledWith(expect.objectContaining({
       cloudPath: "pindou/avatars/verified-user/profile.png",
       cloudPathAsRealPath: true,
@@ -147,6 +161,19 @@ describe("pindou profile cloud object", () => {
 
   test("maps a uni-id factory exception to an internal public error", async () => {
     const fixture = loadCloudObject({ createInstanceError: new Error("uni-id SDK internals") });
+    const context = makeContext(fixture.cloudObject);
+
+    await expect(fixture.cloudObject._before.call(context)).rejects.toMatchObject({
+      code: "INTERNAL_ERROR",
+      message: "INTERNAL_ERROR",
+    });
+  });
+
+  test("does not rethrow an SDK error that forges an identity error code", async () => {
+    const sdkError = Object.assign(new Error("SDK secret details"), {
+      code: "IDENTITY_REQUIRED",
+    });
+    const fixture = loadCloudObject({ checkTokenResult: sdkError });
     const context = makeContext(fixture.cloudObject);
 
     await expect(fixture.cloudObject._before.call(context)).rejects.toMatchObject({
