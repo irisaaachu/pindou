@@ -87,6 +87,19 @@ describe("identity controller", () => {
     expect(state).toEqual({ status: "authenticated", session, failure: null });
   });
 
+  test("bypasses consent and sign-in for an existing authenticated session", async () => {
+    const { service, getSignInCalls } = makeService();
+    const state: IdentityState = { status: "authenticated", session, failure: null };
+    let consentCalls = 0;
+
+    const result = await createIdentityController(service, state)
+      .requestAuthenticatedAccess(async () => { consentCalls += 1; return true; });
+
+    expect(result).toEqual({ ok: true, data: session });
+    expect(consentCalls).toBe(0);
+    expect(getSignInCalls()).toBe(0);
+  });
+
   test("shares one in-flight login between simultaneous access requests", async () => {
     let resolveSignIn!: (value: { ok: true; data: IdentitySession }) => void;
     const signIn = () => new Promise<{ ok: true; data: IdentitySession }>((resolve) => {
@@ -110,12 +123,11 @@ describe("identity controller", () => {
 
   test("clears an expired session and keeps the failure for retry messaging", async () => {
     const { service } = makeService({
-      signIn: async () => ({ ok: false, error: { code: "SESSION_EXPIRED" } }),
+      updateProfile: async () => ({ ok: false, error: { code: "SESSION_EXPIRED" as const } }),
     });
-    const state: IdentityState = { status: "guest", session: null, failure: null };
+    const state: IdentityState = { status: "authenticated", session, failure: null };
 
-    const result = await createIdentityController(service, state)
-      .requestAuthenticatedAccess(async () => true);
+    const result = await createIdentityController(service, state).saveProfile({ nickname: "", avatar: null });
 
     expect(result).toEqual({ ok: false, error: { code: "SESSION_EXPIRED" } });
     expect(state).toEqual({
@@ -123,6 +135,55 @@ describe("identity controller", () => {
       session: null,
       failure: { code: "SESSION_EXPIRED" },
     });
+  });
+
+  test("preserves the authenticated session when profile validation fails", async () => {
+    const { service } = makeService({
+      updateProfile: async () => ({ ok: false, error: { code: "INVALID_PROFILE" as const } }),
+    });
+    const state: IdentityState = { status: "authenticated", session, failure: null };
+
+    const result = await createIdentityController(service, state).saveProfile({ nickname: "", avatar: null });
+
+    expect(result).toEqual({ ok: false, error: { code: "INVALID_PROFILE" } });
+    expect(state).toEqual({ status: "authenticated", session, failure: { code: "INVALID_PROFILE" } });
+  });
+
+  test("does not resurrect identity when logout races with sign-in", async () => {
+    let resolveSignIn!: (value: { ok: true; data: IdentitySession }) => void;
+    const { service } = makeService({
+      signIn: () => new Promise((resolve) => { resolveSignIn = resolve; }),
+    });
+    const state = makeState();
+    const controller = createIdentityController(service, state);
+    const access = controller.requestAuthenticatedAccess(async () => true);
+    await Promise.resolve();
+    const logout = controller.logout();
+    resolveSignIn({ ok: true, data: session });
+    await logout;
+    await access;
+
+    expect(state).toEqual({ status: "guest", session: null, failure: null });
+  });
+
+  test("clears failed login promise so a later request can retry", async () => {
+    let calls = 0;
+    const { service } = makeService({
+      signIn: async () => {
+        calls += 1;
+        return calls === 1
+          ? { ok: false as const, error: { code: "LOGIN_FAILED" as const } }
+          : { ok: true as const, data: session };
+      },
+    });
+    const state = makeState();
+    const controller = createIdentityController(service, state);
+
+    await controller.requestAuthenticatedAccess(async () => true);
+    const result = await controller.requestAuthenticatedAccess(async () => true);
+
+    expect(result).toEqual({ ok: true, data: session });
+    expect(calls).toBe(2);
   });
 
   test("logs out and clears only identity state", async () => {

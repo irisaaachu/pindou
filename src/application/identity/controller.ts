@@ -20,6 +20,7 @@ export function createIdentityController(
   state: IdentityState,
 ): IdentityController {
   let loginPromise: Promise<IdentityResult<IdentitySession>> | null = null;
+  let generation = 0;
 
   function applyFailure(result: { ok: false; error: { code: IdentityFailureCode } }): void {
     state.failure = result.error;
@@ -57,7 +58,9 @@ export function createIdentityController(
 
     if (!loginPromise) {
       state.status = "signing-in";
+      const requestGeneration = generation;
       const currentPromise = service.signIn().then((result) => {
+        if (requestGeneration !== generation) return result;
         if (result.ok) {
           state.session = result.data;
           state.failure = null;
@@ -67,11 +70,10 @@ export function createIdentityController(
         }
         return result;
       });
-      loginPromise = currentPromise;
-      void currentPromise.then(
-        () => { if (loginPromise === currentPromise) loginPromise = null; },
-        () => { if (loginPromise === currentPromise) loginPromise = null; },
-      );
+      const trackedPromise = currentPromise.finally(() => {
+        if (loginPromise === trackedPromise) loginPromise = null;
+      });
+      loginPromise = trackedPromise;
     }
     return loginPromise;
   }
@@ -88,12 +90,18 @@ export function createIdentityController(
       state.failure = null;
       state.status = "authenticated";
     } else {
-      applyFailure(result);
+      state.failure = result.error;
+      if (result.error.code === "SESSION_EXPIRED") {
+        state.session = null;
+        state.status = "guest";
+      }
     }
     return result;
   }
 
   async function logout(): Promise<IdentityState> {
+    generation += 1;
+    loginPromise = null;
     await service.signOut();
     state.status = "guest";
     state.session = null;
