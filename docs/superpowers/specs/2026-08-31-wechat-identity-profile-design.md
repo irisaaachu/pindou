@@ -48,7 +48,7 @@ The domain contract does not import Vue, uni-app, uniCloud or uni-id.
 
 `src/adapters/identity` implements the contract. It owns calls to `uni.login`, `uniCloud.importObject`, local storage and platform conditionals. Page components and domain modules cannot call uniCloud or uni-id directly.
 
-The WeChat adapter passes only the temporary login code to `uni-id-co`. The adapter persists the official token and expiry value under Pindou-owned storage keys. It never persists an AppSecret or accepts a UID supplied by a page.
+The WeChat adapter passes only the temporary login code to `uni-id-co`. The uniCloud client SDK persists the official token and expiry under its standard `uni_id_token` and `uni_id_token_expired` keys so authenticated cloud-object calls work as designed. Pindou stores only a minimal user-display snapshot under a Pindou-owned key. The adapter never persists an AppSecret or accepts a UID supplied by a page.
 
 On H5 or App without an explicitly configured login provider, the adapter returns `PLATFORM_UNSUPPORTED`. Local features and production builds remain available.
 
@@ -92,7 +92,7 @@ Login itself does not request or require an avatar or nickname.
 - Before a protected cloud call, the adapter relies on the server to validate the token.
 - An expired or rejected token clears the local session and returns `SESSION_EXPIRED`.
 - Reauthorization is requested only when the user next invokes a protected cloud action.
-- Logout clears Pindou's local identity keys and returns the UI to guest state.
+- Logout clears the standard uni-id token keys plus Pindou's user-display snapshot and returns the UI to guest state; unrelated local application data is preserved.
 - Logout does not delete the uni-id user, profile or future cloud projects.
 
 ## 6. Optional Profile Editing
@@ -172,7 +172,7 @@ Automated tests cover:
 - Successful login persistence.
 - Login failure, unsupported platform and cloud-not-configured mapping.
 - Expired-session cleanup and retry eligibility.
-- Logout clearing only Pindou identity keys.
+- Logout clearing only the uni-id token keys and Pindou identity snapshot while preserving unrelated local data.
 - UID injection being ignored by protected profile operations.
 - Nickname normalization and avatar type/size rejection.
 - Pages and domain modules remaining free of direct uniCloud and uni-id imports.
