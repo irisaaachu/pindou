@@ -1,0 +1,35 @@
+{
+  "bsonType": "object",
+  "description": "Private Pindou cloud project copy",
+  "additionalProperties": false,
+  "required": [
+    "owner_id",
+    "project_id",
+    "project_version",
+    "name",
+    "source_type",
+    "project_payload",
+    "created_at",
+    "uploaded_at",
+    "updated_at"
+  ],
+  "permission": {
+    "read": false,
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": { "description": "Cloud-generated record ID" },
+    "owner_id": { "bsonType": "string", "description": "Authenticated uni-id user ID" },
+    "project_id": { "bsonType": "string" },
+    "project_version": { "bsonType": "int", "minimum": 1, "maximum": 1 },
+    "name": { "bsonType": "string", "trim": "both" },
+    "source_type": { "bsonType": "string", "enum": ["photo", "gallery", "diy"] },
+    "project_payload": { "bsonType": "object", "description": "Validated PindouProjectV1 payload" },
+    "preview_ref": { "bsonType": "string", "description": "Low-resolution preview only" },
+    "created_at": { "bsonType": "timestamp" },
+    "uploaded_at": { "bsonType": "timestamp" },
+    "updated_at": { "bsonType": "timestamp" }
+  }
+}

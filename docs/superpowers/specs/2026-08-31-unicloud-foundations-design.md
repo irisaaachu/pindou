@@ -1,6 +1,6 @@
 # Milestone 4 uniCloud Foundations Design
 
-**Status:** Approved in conversation; awaiting written-spec review
+**Status:** Approved for implementation
 
 **Date:** 2026-08-31
 

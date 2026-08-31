@@ -1,0 +1,53 @@
+{
+  "bsonType": "object",
+  "description": "Published complete bead-pattern content",
+  "additionalProperties": false,
+  "required": [
+    "content_id",
+    "version",
+    "name",
+    "category_id",
+    "cover_ref",
+    "grid_width",
+    "grid_height",
+    "palette_id",
+    "palette_version",
+    "cell_data",
+    "default_direction",
+    "creator",
+    "source_type",
+    "license_status",
+    "review_status",
+    "acquired_at",
+    "publish_status",
+    "order"
+  ],
+  "permission": {
+    "read": "doc.publish_status == 'published' && doc.license_status == 'approved' && doc.review_status == 'approved'",
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": { "description": "Cloud-generated record ID" },
+    "content_id": { "bsonType": "string" },
+    "version": { "bsonType": "string" },
+    "name": { "bsonType": "string" },
+    "category_id": { "bsonType": "string" },
+    "cover_ref": { "bsonType": "string" },
+    "grid_width": { "bsonType": "int", "minimum": 1 },
+    "grid_height": { "bsonType": "int", "minimum": 1 },
+    "palette_id": { "bsonType": "string" },
+    "palette_version": { "bsonType": "string" },
+    "cell_data": { "bsonType": "array" },
+    "default_direction": { "bsonType": "string", "enum": ["normal", "reverse"] },
+    "creator": { "bsonType": "string" },
+    "source_type": { "bsonType": "string", "enum": ["original", "commissioned", "licensed"] },
+    "source_reference": { "bsonType": "string" },
+    "license_status": { "bsonType": "string", "enum": ["pending", "approved", "rejected"] },
+    "review_status": { "bsonType": "string", "enum": ["pending", "approved", "rejected"] },
+    "acquired_at": { "bsonType": "timestamp" },
+    "publish_status": { "bsonType": "string", "enum": ["draft", "published", "archived"] },
+    "order": { "bsonType": "int", "minimum": 0 }
+  }
+}

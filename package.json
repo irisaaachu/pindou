@@ -37,7 +37,8 @@
     "test": "vitest run --config vitest.config.mts",
     "lint": "eslint . --ext .ts,.vue",
     "type-check": "vue-tsc --noEmit",
-    "check": "npm run test && npm run lint && npm run type-check && npm run build:mp-weixin"
+    "check:cloud": "node scripts/cloud/validate-foundations.mjs",
+    "check": "npm run test && npm run lint && npm run type-check && npm run check:cloud && npm run build:mp-weixin"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5020420260813003",

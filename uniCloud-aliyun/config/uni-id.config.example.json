@@ -1,0 +1,14 @@
+{
+  "dcloudAppid": "REPLACE_LOCALLY_DCLOUD_APP_ID",
+  "isDefaultConfig": true,
+  "tokenExpiresIn": 259200,
+  "tokenExpiresThreshold": 86400,
+  "mp-weixin": {
+    "oauth": {
+      "weixin": {
+        "appid": "REPLACE_LOCALLY_WECHAT_MINIPROGRAM_APP_ID",
+        "appsecret": "REPLACE_LOCALLY_WECHAT_MINIPROGRAM_APP_SECRET"
+      }
+    }
+  }
+}
