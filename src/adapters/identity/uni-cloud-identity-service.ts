@@ -1,0 +1,139 @@
+import type {
+  IdentityResult,
+  IdentityService,
+  IdentitySession,
+  IdentityUser,
+  ProfileDraft,
+} from "../../domain/identity";
+
+const TOKEN_KEY = "uni_id_token";
+const TOKEN_EXPIRY_KEY = "uni_id_token_expired";
+const SNAPSHOT_KEY = "pindou_identity_snapshot_v1";
+
+export interface IdentityPlatformDependencies {
+  platform: "mp-weixin" | "h5" | "app" | "other";
+  now(): number;
+  loginWeixin(): Promise<{ code: string }>;
+  loginByWeixin(code: string): Promise<{
+    errCode: string | number;
+    newToken?: { token: string; tokenExpired: number };
+  }>;
+  getProfile(): Promise<{
+    ok: boolean;
+    data?: { uid: string; nickname?: string; avatarUrl?: string };
+    error?: { code: string };
+  }>;
+  updateProfile(draft: ProfileDraft): Promise<{
+    ok: boolean;
+    data?: IdentityUser;
+    error?: { code: string };
+  }>;
+  readStorage(key: string): unknown;
+  writeStorage(key: string, value: unknown): void;
+  removeStorage(key: string): void;
+}
+
+function failure<T>(code: "PLATFORM_UNSUPPORTED" | "CLOUD_NOT_CONFIGURED" | "LOGIN_FAILED" | "SESSION_EXPIRED" | "INVALID_PROFILE" | "INTERNAL_ERROR"): IdentityResult<T> {
+  return { ok: false, error: { code } };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readSnapshot(value: unknown): IdentityUser | null {
+  if (!isRecord(value) || typeof value.uid !== "string" || value.uid.length === 0) return null;
+  if (value.nickname !== undefined && typeof value.nickname !== "string") return null;
+  if (value.avatarUrl !== undefined && typeof value.avatarUrl !== "string") return null;
+  return {
+    uid: value.uid,
+    ...(typeof value.nickname === "string" ? { nickname: value.nickname } : {}),
+    ...(typeof value.avatarUrl === "string" ? { avatarUrl: value.avatarUrl } : {}),
+  };
+}
+
+function isCloudConfigurationError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /unicloud|importobject|service space|cloud space|not configured/i.test(message);
+}
+
+function isSuccessfulLogin(errCode: string | number): boolean {
+  return errCode === 0 || errCode === "0";
+}
+
+function isTokenMetadata(value: unknown): value is { token: string; tokenExpired: number } {
+  return isRecord(value)
+    && typeof value.token === "string"
+    && value.token.length > 0
+    && typeof value.tokenExpired === "number"
+    && Number.isFinite(value.tokenExpired);
+}
+
+export function createUniCloudIdentityService(
+  dependencies: IdentityPlatformDependencies,
+): IdentityService {
+  function clearIdentityStorage(): void {
+    dependencies.removeStorage(TOKEN_KEY);
+    dependencies.removeStorage(TOKEN_EXPIRY_KEY);
+    dependencies.removeStorage(SNAPSHOT_KEY);
+  }
+
+  async function restore(): Promise<IdentityResult<IdentitySession | null>> {
+    const token = dependencies.readStorage(TOKEN_KEY);
+    const expiresAt = dependencies.readStorage(TOKEN_EXPIRY_KEY);
+    const user = readSnapshot(dependencies.readStorage(SNAPSHOT_KEY));
+    if (typeof token !== "string" || token.length === 0
+      || typeof expiresAt !== "number" || !Number.isFinite(expiresAt)
+      || expiresAt <= dependencies.now() || !user) {
+      clearIdentityStorage();
+      return { ok: true, data: null };
+    }
+    return { ok: true, data: { user, expiresAt } };
+  }
+
+  async function signIn(): Promise<IdentityResult<IdentitySession>> {
+    if (dependencies.platform !== "mp-weixin") return failure("PLATFORM_UNSUPPORTED");
+
+    try {
+      const { code } = await dependencies.loginWeixin();
+      const login = await dependencies.loginByWeixin(code);
+      if (!isSuccessfulLogin(login.errCode) || !isTokenMetadata(login.newToken)) {
+        return failure("LOGIN_FAILED");
+      }
+
+      const profile = await dependencies.getProfile();
+      const user = profile.ok ? readSnapshot(profile.data) : null;
+      if (!user) {
+        clearIdentityStorage();
+        return failure("SESSION_EXPIRED");
+      }
+
+      dependencies.writeStorage(SNAPSHOT_KEY, user);
+      return { ok: true, data: { user, expiresAt: login.newToken.tokenExpired } };
+    } catch (error) {
+      return failure(isCloudConfigurationError(error) ? "CLOUD_NOT_CONFIGURED" : "LOGIN_FAILED");
+    }
+  }
+
+  async function updateProfile(draft: ProfileDraft): Promise<IdentityResult<IdentityUser>> {
+    try {
+      const result = await dependencies.updateProfile(draft);
+      if (result.ok && result.data && readSnapshot(result.data)) {
+        const user = readSnapshot(result.data)!;
+        dependencies.writeStorage(SNAPSHOT_KEY, user);
+        return { ok: true, data: user };
+      }
+      if (result.error?.code === "INVALID_PROFILE") return failure("INVALID_PROFILE");
+      clearIdentityStorage();
+      return failure("SESSION_EXPIRED");
+    } catch (error) {
+      return failure(isCloudConfigurationError(error) ? "CLOUD_NOT_CONFIGURED" : "INTERNAL_ERROR");
+    }
+  }
+
+  async function signOut(): Promise<void> {
+    clearIdentityStorage();
+  }
+
+  return { restore, signIn, updateProfile, signOut };
+}
