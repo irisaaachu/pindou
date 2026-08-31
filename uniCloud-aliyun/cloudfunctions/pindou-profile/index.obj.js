@@ -5,22 +5,30 @@ const { failure, success, toPublicFailure } = require("pindou-cloud-common");
 const { buildProfileUpdate } = require("./profile-core");
 
 function invalidRequest() {
-  const error = new Error("INVALID_REQUEST");
-  error.code = "INVALID_REQUEST";
+  return publicError("INVALID_REQUEST");
+}
+
+function publicError(code) {
+  const error = new Error(code);
+  error.code = code;
   return error;
 }
 
 module.exports = {
   async _before() {
-    const uniIdCommon = createInstance({ clientInfo: this.getClientInfo() });
-    const token = this.getUniIdToken();
-    const result = await uniIdCommon.checkToken(token);
-    if (!result || result.errCode !== 0 || typeof result.uid !== "string" || !result.uid) {
-      const error = new Error("IDENTITY_REQUIRED");
-      error.code = "IDENTITY_REQUIRED";
-      throw error;
+    try {
+      const uniIdCommon = createInstance({ clientInfo: this.getClientInfo() });
+      const token = this.getUniIdToken();
+      if (typeof token !== "string" || !token) throw publicError("IDENTITY_REQUIRED");
+      const result = await uniIdCommon.checkToken(token);
+      if (!result || result.errCode !== 0 || typeof result.uid !== "string" || !result.uid) {
+        throw publicError("IDENTITY_REQUIRED");
+      }
+      this.verifiedUid = result.uid;
+    } catch (error) {
+      if (error && error.code === "IDENTITY_REQUIRED") throw error;
+      throw publicError("INTERNAL_ERROR");
     }
-    this.verifiedUid = result.uid;
   },
 
   async getProfile() {
