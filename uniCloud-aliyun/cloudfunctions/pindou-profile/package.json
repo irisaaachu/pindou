@@ -1,0 +1,10 @@
+{
+  "name": "pindou-profile",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.obj.js",
+  "dependencies": {
+    "pindou-cloud-common": "file:../common/pindou-cloud-common",
+    "uni-id-common": "file:../common/uni-id-common"
+  }
+}
