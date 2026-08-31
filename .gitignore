@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 .setup-cache
+.worktrees/
 .DS_Store
 dist
 *.local
