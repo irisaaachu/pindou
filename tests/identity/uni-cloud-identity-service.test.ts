@@ -120,6 +120,19 @@ describe("uniCloud identity service", () => {
     expect(result).toEqual({ ok: false, error: { code: "CLOUD_NOT_CONFIGURED" } });
   });
 
+  test("maps uniCloud errMsg failures to CLOUD_NOT_CONFIGURED without retaining the error", async () => {
+    const dependencies = makeDependencies({
+      loginByWeixin: vi.fn(async () => {
+        throw { errMsg: "uniCloud importObject failed because the service space is missing" };
+      }),
+    });
+
+    const result = await createUniCloudIdentityService(dependencies).signIn();
+
+    expect(result).toEqual({ ok: false, error: { code: "CLOUD_NOT_CONFIGURED" } });
+    expect(result).not.toHaveProperty("error.message");
+  });
+
   test("maps rejected login responses to LOGIN_FAILED", async () => {
     const dependencies = makeDependencies({
       loginByWeixin: vi.fn(async () => ({ errCode: "AUTH_FAILED" })),
@@ -144,6 +157,26 @@ describe("uniCloud identity service", () => {
     expect(dependencies.storage.has("pindou_identity_snapshot_v1")).toBe(false);
   });
 
+  test("rejects an expired login token and clears identity storage", async () => {
+    const dependencies = makeDependencies({
+      loginByWeixin: vi.fn(async () => ({
+        errCode: 0,
+        newToken: { token: "sdk-token", tokenExpired: 1_000 },
+      })),
+    });
+    dependencies.storage.set("uni_id_token", "old-token");
+    dependencies.storage.set("uni_id_token_expired", 900);
+    dependencies.storage.set("pindou_identity_snapshot_v1", { uid: "old-user" });
+
+    const result = await createUniCloudIdentityService(dependencies).signIn();
+
+    expect(result).toEqual({ ok: false, error: { code: "SESSION_EXPIRED" } });
+    expect(dependencies.getProfile).not.toHaveBeenCalled();
+    expect(dependencies.storage.has("uni_id_token")).toBe(false);
+    expect(dependencies.storage.has("uni_id_token_expired")).toBe(false);
+    expect(dependencies.storage.has("pindou_identity_snapshot_v1")).toBe(false);
+  });
+
   test("maps cloud INVALID_PROFILE to INVALID_PROFILE", async () => {
     const dependencies = makeDependencies({
       updateProfile: vi.fn(async () => ({ ok: false, error: { code: "INVALID_PROFILE" } })),
@@ -155,6 +188,18 @@ describe("uniCloud identity service", () => {
     });
 
     expect(result).toEqual({ ok: false, error: { code: "INVALID_PROFILE" } });
+  });
+
+  test("rejects non-WeChat profile updates without invoking the cloud dependency", async () => {
+    const dependencies = makeDependencies({ platform: "app" });
+
+    const result = await createUniCloudIdentityService(dependencies).updateProfile({
+      nickname: "Pindou",
+      avatar: null,
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "PLATFORM_UNSUPPORTED" } });
+    expect(dependencies.updateProfile).not.toHaveBeenCalled();
   });
 
   test("logs out by removing only the SDK token keys and Pindou snapshot", async () => {

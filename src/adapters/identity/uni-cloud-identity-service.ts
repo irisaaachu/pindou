@@ -53,7 +53,17 @@ function readSnapshot(value: unknown): IdentityUser | null {
 }
 
 function isCloudConfigurationError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
+  let message = "";
+  try {
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (isRecord(error)) {
+      const values = [error.errMsg, error.message];
+      message = values.filter((value): value is string => typeof value === "string").join(" ");
+    }
+  } catch {
+    return false;
+  }
   return /unicloud|importobject|service space|cloud space|not configured/i.test(message);
 }
 
@@ -100,6 +110,10 @@ export function createUniCloudIdentityService(
       if (!isSuccessfulLogin(login.errCode) || !isTokenMetadata(login.newToken)) {
         return failure("LOGIN_FAILED");
       }
+      if (login.newToken.tokenExpired <= dependencies.now()) {
+        clearIdentityStorage();
+        return failure("SESSION_EXPIRED");
+      }
 
       const profile = await dependencies.getProfile();
       const user = profile.ok ? readSnapshot(profile.data) : null;
@@ -116,10 +130,12 @@ export function createUniCloudIdentityService(
   }
 
   async function updateProfile(draft: ProfileDraft): Promise<IdentityResult<IdentityUser>> {
+    if (dependencies.platform !== "mp-weixin") return failure("PLATFORM_UNSUPPORTED");
+
     try {
       const result = await dependencies.updateProfile(draft);
-      if (result.ok && result.data && readSnapshot(result.data)) {
-        const user = readSnapshot(result.data)!;
+      const user = result.ok ? readSnapshot(result.data) : null;
+      if (user) {
         dependencies.writeStorage(SNAPSHOT_KEY, user);
         return { ok: true, data: user };
       }
