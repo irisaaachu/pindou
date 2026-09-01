@@ -69,10 +69,13 @@ export function createIdentityRuntime(
     },
     async saveProfile(draft) {
       if (runtime.profileSaving || state.status !== "authenticated" || !state.session) return false;
-      runtime.profileSaving = true;
+        runtime.profileSaving = true;
       try {
         const result = await controller.saveProfile(draft);
-        if (!result.ok) return false;
+        if (!result.ok) {
+          if (result.error.code === "SESSION_EXPIRED") runtime.profileEditorVisible = false;
+          return false;
+        }
         runtime.profileEditorVisible = false;
         return true;
       } finally {

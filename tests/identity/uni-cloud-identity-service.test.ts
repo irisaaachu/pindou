@@ -144,6 +144,23 @@ describe("uniCloud identity service", () => {
     expect(dependencies.getProfile).not.toHaveBeenCalled();
   });
 
+  test("maps a rejected protected profile IDENTITY_REQUIRED during sign-in to session expiry", async () => {
+    const dependencies = makeDependencies({
+      getProfile: vi.fn(async () => { throw { errCode: "IDENTITY_REQUIRED", message: "private token detail" }; }),
+    });
+    dependencies.storage.set("uni_id_token", "sdk-token");
+    dependencies.storage.set("uni_id_token_expired", 2_000);
+    dependencies.storage.set("pindou_identity_snapshot_v1", { uid: "verified-user" });
+
+    const result = await createUniCloudIdentityService(dependencies).signIn();
+
+    expect(result).toEqual({ ok: false, error: { code: "SESSION_EXPIRED" } });
+    expect(result).not.toHaveProperty("error.message");
+    expect(dependencies.storage.has("uni_id_token")).toBe(false);
+    expect(dependencies.storage.has("uni_id_token_expired")).toBe(false);
+    expect(dependencies.storage.has("pindou_identity_snapshot_v1")).toBe(false);
+  });
+
   test("clears identity storage when the protected profile has no authenticated user", async () => {
     const dependencies = makeDependencies({
       getProfile: vi.fn(async () => ({ ok: true, data: { uid: "" } })),
@@ -302,6 +319,65 @@ describe("uniCloud identity service", () => {
     resolveOldLogin({ code: "old-code" });
     await oldSignIn;
 
+    expect(dependencies.storage.get("pindou_identity_snapshot_v1")).toEqual({ uid: "new-user" });
+  });
+
+  test("clears official token keys after logout wins a pending SDK login write", async () => {
+    let resolveLogin!: (value: { errCode: number; newToken: { token: string; tokenExpired: number } }) => void;
+    let markSdkLoginRequested!: () => void;
+    const sdkLoginRequested = new Promise<void>((resolve) => { markSdkLoginRequested = resolve; });
+    const dependencies = makeDependencies({
+      loginByWeixin: vi.fn(() => {
+        markSdkLoginRequested();
+        return new Promise((resolve) => { resolveLogin = (value) => {
+          dependencies.storage.set("uni_id_token", value.newToken.token);
+          dependencies.storage.set("uni_id_token_expired", value.newToken.tokenExpired);
+          resolve(value);
+        }; });
+      }),
+    });
+    const service = createUniCloudIdentityService(dependencies);
+
+    const signingIn = service.signIn();
+    await sdkLoginRequested;
+    await service.signOut();
+    resolveLogin({ errCode: 0, newToken: { token: "stale-token", tokenExpired: 2_000 } });
+    await signingIn;
+
+    expect(dependencies.storage.has("uni_id_token")).toBe(false);
+    expect(dependencies.storage.has("uni_id_token_expired")).toBe(false);
+    expect(dependencies.storage.has("pindou_identity_snapshot_v1")).toBe(false);
+  });
+
+  test("rejects a post-logout login until the older SDK login settles, then permits a clean retry", async () => {
+    let resolveOldLogin!: (value: { errCode: number; newToken: { token: string; tokenExpired: number } }) => void;
+    let markOldSdkLoginRequested!: () => void;
+    const oldSdkLoginRequested = new Promise<void>((resolve) => { markOldSdkLoginRequested = resolve; });
+    let sdkCalls = 0;
+    const dependencies = makeDependencies({
+      loginByWeixin: vi.fn(() => {
+        sdkCalls += 1;
+        if (sdkCalls > 1) return Promise.resolve({ errCode: 0, newToken: { token: "new-token", tokenExpired: 2_000 } });
+        markOldSdkLoginRequested();
+        return new Promise((resolve) => { resolveOldLogin = (value) => {
+          dependencies.storage.set("uni_id_token", value.newToken.token);
+          dependencies.storage.set("uni_id_token_expired", value.newToken.tokenExpired);
+          resolve(value);
+        }; });
+      }),
+      getProfile: vi.fn(async () => ({ ok: true, data: { uid: "new-user" } })),
+    });
+    const service = createUniCloudIdentityService(dependencies);
+
+    const oldSignIn = service.signIn();
+    await oldSdkLoginRequested;
+    await service.signOut();
+    await expect(service.signIn()).resolves.toEqual({ ok: false, error: { code: "LOGIN_FAILED" } });
+    resolveOldLogin({ errCode: 0, newToken: { token: "old-token", tokenExpired: 2_000 } });
+    await oldSignIn;
+    const retried = await service.signIn();
+
+    expect(retried).toEqual({ ok: true, data: { user: { uid: "new-user" }, expiresAt: 2_000 } });
     expect(dependencies.storage.get("pindou_identity_snapshot_v1")).toEqual({ uid: "new-user" });
   });
 });

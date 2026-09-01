@@ -186,6 +186,22 @@ describe("identity UI runtime", () => {
     expect(getIdentityPresentation(runtime.state).detail).toBe("资料格式不符合要求，请检查昵称或头像。");
   });
 
+  test("closes the editor and exposes re-login copy when profile saving expires the session", async () => {
+    const service = makeService({
+      restore: vi.fn(async () => ({ ok: true as const, data: session })),
+      updateProfile: vi.fn(async () => ({ ok: false as const, error: { code: "SESSION_EXPIRED" as const } })),
+    });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+    runtime.openProfileEditor();
+
+    const saved = await runtime.saveProfile({ nickname: "Pindou", avatar: null });
+
+    expect(saved).toBe(false);
+    expect(runtime.profileEditorVisible).toBe(false);
+    expect(getIdentityPresentation(runtime.state).detail).toBe("登录状态已过期，请重新登录后继续。");
+  });
+
   test("presents the approved default profile name and authenticated profile failure", () => {
     expect(getIdentityPresentation({
       status: "authenticated",
@@ -202,6 +218,18 @@ describe("identity UI runtime", () => {
     expect(getIdentityPresentation({ status: "guest", session: null, failure: null }).privacy).toBe(
       "微信身份、资料设置与云作品操作均由你主动触发，不会上传你的原始创作照片。",
     );
+  });
+
+  test.each([
+    ["PLATFORM_UNSUPPORTED", "当前平台暂不支持微信身份登录。"],
+    ["CLOUD_NOT_CONFIGURED", "云服务暂未配置，请稍后再试。"],
+    ["LOGIN_FAILED", "登录未完成，请重新尝试。"],
+  ] as const)("shares stable %s identity feedback with the Create page", (code, detail) => {
+    expect(getIdentityPresentation({
+      status: "error",
+      session: null,
+      failure: { code },
+    }).detail).toBe(detail);
   });
 
   test("rejects an oversized avatar before reading its base64 data", async () => {

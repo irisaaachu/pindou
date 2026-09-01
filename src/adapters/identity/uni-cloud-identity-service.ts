@@ -89,6 +89,7 @@ export function createUniCloudIdentityService(
   dependencies: IdentityPlatformDependencies,
 ): IdentityService {
   let operationGeneration = 0;
+  let pendingSdkLogin: Promise<{ errCode: string | number; newToken?: { token: string; tokenExpired: number } }> | null = null;
 
   function clearIdentityStorage(expectedGeneration?: number): void {
     if (expectedGeneration !== undefined && expectedGeneration !== operationGeneration) return;
@@ -112,12 +113,23 @@ export function createUniCloudIdentityService(
 
   async function signIn(): Promise<IdentityResult<IdentitySession>> {
     if (dependencies.platform !== "mp-weixin") return failure("PLATFORM_UNSUPPORTED");
+    if (pendingSdkLogin) return failure("LOGIN_FAILED");
     const requestGeneration = operationGeneration;
 
     try {
       const { code } = await dependencies.loginWeixin();
       if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
-      const login = await dependencies.loginByWeixin(code);
+      const sdkLogin = dependencies.loginByWeixin(code);
+      pendingSdkLogin = sdkLogin;
+      let login: { errCode: string | number; newToken?: { token: string; tokenExpired: number } };
+      try {
+        login = await sdkLogin;
+      } finally {
+        if (pendingSdkLogin === sdkLogin) {
+          if (requestGeneration !== operationGeneration) clearIdentityStorage();
+          pendingSdkLogin = null;
+        }
+      }
       if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       if (!isSuccessfulLogin(login.errCode) || !isTokenMetadata(login.newToken)) {
         return failure("LOGIN_FAILED");
@@ -140,6 +152,10 @@ export function createUniCloudIdentityService(
       return { ok: true, data: { user, expiresAt: login.newToken.tokenExpired } };
     } catch (error) {
       if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
+      if (rejectedCloudCode(error) === "IDENTITY_REQUIRED") {
+        clearIdentityStorage(requestGeneration);
+        return failure("SESSION_EXPIRED");
+      }
       return failure(isCloudConfigurationError(error) ? "CLOUD_NOT_CONFIGURED" : "LOGIN_FAILED");
     }
   }

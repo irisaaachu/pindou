@@ -53,15 +53,24 @@
 import { computed } from "vue";
 
 import ConsentDialog from "../../components/identity/ConsentDialog.vue";
-import { identityRuntime } from "../../application/identity/runtime";
+import { getIdentityPresentation, identityRuntime } from "../../application/identity/runtime";
 
 const cloudReady = computed(() => identityRuntime.state.status === "authenticated");
-const cloudTitle = computed(() => cloudReady.value ? "身份已就绪" : "云作品功能尚未接入");
+const identityPresentation = computed(() => getIdentityPresentation(identityRuntime.state));
+const cloudTitle = computed(() => cloudReady.value
+  ? "身份已就绪"
+  : identityRuntime.state.status === "error" ? identityPresentation.value.title : "云作品功能尚未接入",
+);
 const cloudCopy = computed(() => cloudReady.value
   ? "身份已就绪，云作品将在后续版本开放"
-  : "未来只有在你主动使用云端功能时，才会请求微信身份授权。",
+  : identityRuntime.state.status === "error"
+    ? identityPresentation.value.detail
+    : "你可以主动确认身份后，在后续版本查看云作品。",
 );
-const cloudAction = computed(() => cloudReady.value ? "已完成身份确认" : "确认身份后查看");
+const cloudAction = computed(() => cloudReady.value
+  ? "已完成身份确认"
+  : identityRuntime.state.status === "error" ? identityPresentation.value.action : "确认身份后查看",
+);
 
 function requestCloudWorks(): void {
   if (cloudReady.value) return;
