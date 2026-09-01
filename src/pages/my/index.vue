@@ -52,6 +52,7 @@
       :visible="identityRuntime.profileEditorVisible"
       :user="identityRuntime.state.session?.user || null"
       :saving="identityRuntime.profileSaving"
+      :failure="presentation.failure"
       :supported="identityRuntime.profileEditingSupported"
       :read-avatar="readTemporaryAvatarFile"
       @close="identityRuntime.closeProfileEditor"

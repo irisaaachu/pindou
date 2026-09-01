@@ -243,4 +243,65 @@ describe("uniCloud identity service", () => {
     ]);
     expect(dependencies.storage.get("unrelated")).toBe("keep");
   });
+
+  test("does not write a sign-in snapshot after logout wins its in-flight profile request", async () => {
+    let resolveProfile!: (value: { ok: true; data: { uid: string } }) => void;
+    let markProfileRequested!: () => void;
+    const profileRequested = new Promise<void>((resolve) => { markProfileRequested = resolve; });
+    const dependencies = makeDependencies({
+      getProfile: vi.fn(() => {
+        markProfileRequested();
+        return new Promise((resolve) => { resolveProfile = resolve; });
+      }),
+    });
+    const service = createUniCloudIdentityService(dependencies);
+
+    const signingIn = service.signIn();
+    await profileRequested;
+    await service.signOut();
+    resolveProfile({ ok: true, data: { uid: "old-user" } });
+    await signingIn;
+
+    expect(dependencies.storage.has("pindou_identity_snapshot_v1")).toBe(false);
+    expect(dependencies.storage.has("uni_id_token")).toBe(false);
+    expect(dependencies.storage.has("uni_id_token_expired")).toBe(false);
+  });
+
+  test("does not write a profile snapshot after logout wins its in-flight update", async () => {
+    let resolveUpdate!: (value: { ok: true; data: { uid: string } }) => void;
+    const dependencies = makeDependencies({
+      updateProfile: vi.fn(() => new Promise((resolve) => { resolveUpdate = resolve; })),
+    });
+    const service = createUniCloudIdentityService(dependencies);
+
+    const saving = service.updateProfile({ nickname: "Pindou", avatar: null });
+    await service.signOut();
+    resolveUpdate({ ok: true, data: { uid: "old-user" } });
+    await saving;
+
+    expect(dependencies.storage.has("pindou_identity_snapshot_v1")).toBe(false);
+  });
+
+  test("does not let an old sign-in clear a snapshot created after logout", async () => {
+    let resolveOldLogin!: (value: { code: string }) => void;
+    let loginCalls = 0;
+    const dependencies = makeDependencies({
+      loginWeixin: vi.fn(() => {
+        loginCalls += 1;
+        return loginCalls === 1
+          ? new Promise((resolve) => { resolveOldLogin = resolve; })
+          : Promise.resolve({ code: "new-code" });
+      }),
+      getProfile: vi.fn(async () => ({ ok: true, data: { uid: "new-user" } })),
+    });
+    const service = createUniCloudIdentityService(dependencies);
+
+    const oldSignIn = service.signIn();
+    await service.signOut();
+    await service.signIn();
+    resolveOldLogin({ code: "old-code" });
+    await oldSignIn;
+
+    expect(dependencies.storage.get("pindou_identity_snapshot_v1")).toEqual({ uid: "new-user" });
+  });
 });

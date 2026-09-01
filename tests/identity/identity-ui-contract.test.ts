@@ -191,7 +191,11 @@ describe("identity UI runtime", () => {
       status: "authenticated",
       session: { user: { uid: "user-1" }, expiresAt: 2_000 },
       failure: { code: "LOGIN_FAILED" },
-    })).toMatchObject({ title: "拼豆朋友", detail: "资料保存未完成，请稍后重试。" });
+    })).toMatchObject({
+      title: "拼豆朋友",
+      detail: "资料保存未完成，请稍后重试。",
+      failure: "资料保存未完成，请稍后重试。",
+    });
   });
 
   test("presents the stable privacy statement for user-initiated identity and cloud actions", () => {

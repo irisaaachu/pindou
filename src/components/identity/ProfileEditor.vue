@@ -17,6 +17,7 @@
         <text class="profile-editor__default-name">{{ user?.nickname || "Pindou 创作者" }}</text>
         <text class="section-copy">当前平台暂不支持微信头像与昵称设置。</text>
       </view>
+      <text v-if="failure" class="profile-editor__failure">{{ failure }}</text>
       <view class="profile-editor__actions">
         <button class="profile-editor__secondary" @tap="$emit('close')">取消</button>
         <button v-if="supported" class="profile-editor__primary" :loading="saving" @tap="save">保存资料</button>
@@ -35,6 +36,7 @@ const props = defineProps<{
   visible: boolean;
   user: IdentityUser | null;
   saving: boolean;
+  failure: string | null;
   supported: boolean;
   readAvatar: (filePath: string) => Promise<AvatarFile>;
 }>();
@@ -77,6 +79,7 @@ function save(): void {
 .profile-editor__avatar image { width: 100%; height: 100%; }
 .profile-editor__input { flex: 1; min-width: 0; padding: 18rpx 22rpx; background: #f8f3ec; border-radius: 18rpx; font-size: 28rpx; }
 .profile-editor__unsupported { margin-top: 20rpx; }
+.profile-editor__failure { display: block; margin-top: 18rpx; color: #b35463; font-size: 24rpx; line-height: 1.5; }
 .profile-editor__default-avatar { display: flex; align-items: center; justify-content: center; width: 88rpx; height: 88rpx; margin-bottom: 12rpx; color: #66537f; background: var(--color-blush); border-radius: 30rpx; font-size: 34rpx; font-weight: 700; }
 .profile-editor__default-name { display: block; margin-bottom: 4rpx; font-size: 28rpx; font-weight: 700; }
 .profile-editor__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; margin-top: 32rpx; }

@@ -88,7 +88,10 @@ function isTokenMetadata(value: unknown): value is { token: string; tokenExpired
 export function createUniCloudIdentityService(
   dependencies: IdentityPlatformDependencies,
 ): IdentityService {
-  function clearIdentityStorage(): void {
+  let operationGeneration = 0;
+
+  function clearIdentityStorage(expectedGeneration?: number): void {
+    if (expectedGeneration !== undefined && expectedGeneration !== operationGeneration) return;
     dependencies.removeStorage(TOKEN_KEY);
     dependencies.removeStorage(TOKEN_EXPIRY_KEY);
     dependencies.removeStorage(SNAPSHOT_KEY);
@@ -109,48 +112,58 @@ export function createUniCloudIdentityService(
 
   async function signIn(): Promise<IdentityResult<IdentitySession>> {
     if (dependencies.platform !== "mp-weixin") return failure("PLATFORM_UNSUPPORTED");
+    const requestGeneration = operationGeneration;
 
     try {
       const { code } = await dependencies.loginWeixin();
+      if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       const login = await dependencies.loginByWeixin(code);
+      if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       if (!isSuccessfulLogin(login.errCode) || !isTokenMetadata(login.newToken)) {
         return failure("LOGIN_FAILED");
       }
       if (login.newToken.tokenExpired <= dependencies.now()) {
-        clearIdentityStorage();
+        clearIdentityStorage(requestGeneration);
         return failure("SESSION_EXPIRED");
       }
 
       const profile = await dependencies.getProfile();
+      if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       const user = profile.ok ? readSnapshot(profile.data) : null;
       if (!user) {
-        clearIdentityStorage();
+        clearIdentityStorage(requestGeneration);
         return failure("SESSION_EXPIRED");
       }
 
+      if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       dependencies.writeStorage(SNAPSHOT_KEY, user);
       return { ok: true, data: { user, expiresAt: login.newToken.tokenExpired } };
     } catch (error) {
+      if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       return failure(isCloudConfigurationError(error) ? "CLOUD_NOT_CONFIGURED" : "LOGIN_FAILED");
     }
   }
 
   async function updateProfile(draft: ProfileDraft): Promise<IdentityResult<IdentityUser>> {
     if (dependencies.platform !== "mp-weixin") return failure("PLATFORM_UNSUPPORTED");
+    const requestGeneration = operationGeneration;
 
     try {
       const result = await dependencies.updateProfile(draft);
+      if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       const user = result.ok ? readSnapshot(result.data) : null;
       if (user) {
+        if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
         dependencies.writeStorage(SNAPSHOT_KEY, user);
         return { ok: true, data: user };
       }
       if (result.error?.code === "INVALID_PROFILE") return failure("INVALID_PROFILE");
-      clearIdentityStorage();
+      clearIdentityStorage(requestGeneration);
       return failure("SESSION_EXPIRED");
     } catch (error) {
+      if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       if (rejectedCloudCode(error) === "IDENTITY_REQUIRED") {
-        clearIdentityStorage();
+        clearIdentityStorage(requestGeneration);
         return failure("SESSION_EXPIRED");
       }
       return failure(isCloudConfigurationError(error) ? "CLOUD_NOT_CONFIGURED" : "INTERNAL_ERROR");
@@ -158,6 +171,7 @@ export function createUniCloudIdentityService(
   }
 
   async function signOut(): Promise<void> {
+    operationGeneration += 1;
     clearIdentityStorage();
   }
 
