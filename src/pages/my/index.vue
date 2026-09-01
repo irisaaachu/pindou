@@ -1,13 +1,17 @@
 <template>
   <view class="app-page my-page">
     <view class="profile-card surface-card">
-      <view class="profile-card__avatar">{{ avatarLetter }}</view>
+      <image v-if="avatarUrl" class="profile-card__avatar profile-card__avatar--image" :src="avatarUrl" mode="aspectFill" />
+      <view v-else class="profile-card__avatar">{{ avatarLetter }}</view>
       <view class="profile-card__content">
         <text class="eyebrow">Pindou member</text>
         <text class="section-title">{{ presentation.title }}</text>
         <text class="section-copy">{{ presentation.detail }}</text>
       </view>
       <text class="soft-badge">{{ identityLabel }}</text>
+      <button v-if="identityRuntime.state.status === 'authenticated'" class="profile-card__logout" @tap.stop="logout">
+        退出登录
+      </button>
     </view>
 
     <view class="settings surface-card">
@@ -36,7 +40,7 @@
 
     <view class="my-note">
       <text class="my-note__title">先创作，再决定是否登录。</text>
-      <text class="section-copy">只有保存或查看云作品时才会触发微信身份授权。</text>
+      <text class="section-copy">微信身份、资料设置与云作品操作都会在你主动触发时请求授权。</text>
     </view>
 
     <ConsentDialog
@@ -67,6 +71,7 @@ import type { ProfileDraft } from "../../domain/identity";
 
 const presentation = computed(() => getIdentityPresentation(identityRuntime.state));
 const avatarLetter = computed(() => (identityRuntime.state.session?.user.nickname || "P").slice(0, 1));
+const avatarUrl = computed(() => identityRuntime.state.session?.user.avatarUrl || "");
 const identityLabel = computed(() => {
   if (identityRuntime.state.status === "authenticated") return "已登录";
   if (identityRuntime.state.status === "restoring" || identityRuntime.state.status === "signing-in") return "处理中";
@@ -84,6 +89,10 @@ function handleProfileAction(): void {
 
 function saveProfile(draft: ProfileDraft): void {
   void identityRuntime.saveProfile(draft);
+}
+
+function logout(): void {
+  void identityRuntime.logout();
 }
 </script>
 
@@ -114,6 +123,17 @@ function saveProfile(draft: ProfileDraft): void {
   border-radius: 38rpx;
   font-size: 44rpx;
   font-weight: 700;
+}
+
+.profile-card__avatar--image { object-fit: cover; }
+
+.profile-card__logout {
+  margin: 0;
+  padding: 10rpx 16rpx;
+  color: #66537f;
+  background: rgba(255, 255, 255, 0.62);
+  border-radius: 999rpx;
+  font-size: 22rpx;
 }
 
 .profile-card__content {

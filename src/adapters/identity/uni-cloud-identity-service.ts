@@ -67,6 +67,12 @@ function isCloudConfigurationError(error: unknown): boolean {
   return /unicloud|importobject|service space|cloud space|not configured/i.test(message);
 }
 
+function rejectedCloudCode(error: unknown): string | null {
+  if (!isRecord(error)) return null;
+  const code = error.code ?? error.errCode;
+  return typeof code === "string" ? code : null;
+}
+
 function isSuccessfulLogin(errCode: string | number): boolean {
   return errCode === 0 || errCode === "0";
 }
@@ -143,6 +149,10 @@ export function createUniCloudIdentityService(
       clearIdentityStorage();
       return failure("SESSION_EXPIRED");
     } catch (error) {
+      if (rejectedCloudCode(error) === "IDENTITY_REQUIRED") {
+        clearIdentityStorage();
+        return failure("SESSION_EXPIRED");
+      }
       return failure(isCloudConfigurationError(error) ? "CLOUD_NOT_CONFIGURED" : "INTERNAL_ERROR");
     }
   }

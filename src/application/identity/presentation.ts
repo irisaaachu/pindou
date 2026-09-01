@@ -8,12 +8,12 @@ export type IdentityPresentation = {
 };
 
 export function getIdentityPresentation(state: IdentityState): IdentityPresentation {
-  const privacy = "微信登录不会上传你的原始创作照片。";
+  const privacy = "微信身份、资料设置与云作品操作均由你主动触发，不会上传你的原始创作照片。";
 
   if (state.status === "authenticated" && state.session) {
     return {
-      title: state.session.user.nickname || "Pindou 创作者",
-      detail: "身份已就绪，可在后续版本使用云作品。",
+      title: state.session.user.nickname || "拼豆朋友",
+      detail: state.failure ? profileErrorCopy(state.failure.code) : "身份已就绪，可在后续版本使用云作品。",
       action: "编辑资料",
       privacy,
     };
@@ -32,12 +32,22 @@ export function getIdentityPresentation(state: IdentityState): IdentityPresentat
     };
   }
 
+  if (state.failure?.code === "SESSION_EXPIRED") {
+    return { title: "拼豆朋友", detail: "登录状态已过期，请重新登录后继续。", action: "重新登录", privacy };
+  }
+
   return {
-    title: "游客状态",
-    detail: "头像和昵称可以自愿设置，不影响本地生成与导出。",
+    title: "拼豆朋友",
+    detail: "未登录也可以继续本地生成与导出。",
     action: "微信登录",
     privacy,
   };
+}
+
+function profileErrorCopy(code: IdentityFailureCode): string {
+  if (code === "INVALID_PROFILE") return "资料格式不符合要求，请检查昵称或头像。";
+  if (code === "SESSION_EXPIRED") return "登录状态已过期，请重新登录后继续。";
+  return "资料保存未完成，请稍后重试。";
 }
 
 function identityErrorCopy(code: IdentityFailureCode | undefined): string {

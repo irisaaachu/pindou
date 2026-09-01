@@ -28,6 +28,7 @@ export type IdentityRuntime = {
   openProfileEditor(): void;
   closeProfileEditor(): void;
   saveProfile(draft: ProfileDraft): Promise<boolean>;
+  logout(): Promise<void>;
 };
 
 export function createIdentityRuntime(
@@ -36,6 +37,7 @@ export function createIdentityRuntime(
 ): IdentityRuntime {
   const state = reactive<IdentityState>({ status: "guest", session: null, failure: null });
   const controller: IdentityController = createIdentityController(service, state);
+  let logoutPromise: Promise<void> | null = null;
   const runtime = reactive<IdentityRuntime>({
     state,
     consentVisible: false,
@@ -76,6 +78,18 @@ export function createIdentityRuntime(
       } finally {
         runtime.profileSaving = false;
       }
+    },
+    async logout() {
+      if (!logoutPromise) {
+        runtime.consentVisible = false;
+        runtime.profileEditorVisible = false;
+        const pending = controller.logout().then(() => undefined);
+        const tracked = pending.finally(() => {
+          if (logoutPromise === tracked) logoutPromise = null;
+        });
+        logoutPromise = tracked;
+      }
+      return logoutPromise;
     },
   });
   return runtime;

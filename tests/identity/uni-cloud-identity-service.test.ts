@@ -190,6 +190,28 @@ describe("uniCloud identity service", () => {
     expect(result).toEqual({ ok: false, error: { code: "INVALID_PROFILE" } });
   });
 
+  test.each(["code", "errCode"] as const)("maps rejected cloud %s IDENTITY_REQUIRED to session expiry without retaining the message", async (field) => {
+    const removed: string[] = [];
+    const dependencies = makeDependencies({
+      updateProfile: vi.fn(async () => {
+        throw { [field]: "IDENTITY_REQUIRED", message: "private upstream detail" };
+      }),
+      removeStorage: (key) => {
+        removed.push(key);
+        dependencies.storage.delete(key);
+      },
+    });
+    dependencies.storage.set("uni_id_token", "sdk-token");
+    dependencies.storage.set("uni_id_token_expired", 2_000);
+    dependencies.storage.set("pindou_identity_snapshot_v1", { uid: "verified-user" });
+
+    const result = await createUniCloudIdentityService(dependencies).updateProfile({ nickname: "Pindou", avatar: null });
+
+    expect(result).toEqual({ ok: false, error: { code: "SESSION_EXPIRED" } });
+    expect(result).not.toHaveProperty("error.message");
+    expect(removed).toEqual(["uni_id_token", "uni_id_token_expired", "pindou_identity_snapshot_v1"]);
+  });
+
   test("rejects non-WeChat profile updates without invoking the cloud dependency", async () => {
     const dependencies = makeDependencies({ platform: "app" });
 

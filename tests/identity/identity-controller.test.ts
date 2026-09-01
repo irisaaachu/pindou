@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import {
   createIdentityController,
@@ -196,6 +196,63 @@ describe("identity controller", () => {
     expect(getSignOutCalls()).toBe(1);
     expect(result).toEqual({ status: "guest", session: null, failure: null });
     expect(state).toEqual({ status: "guest", session: null, failure: null });
+  });
+
+  test("does not restore a session after logout races with restore", async () => {
+    let resolveRestore!: (value: { ok: true; data: IdentitySession }) => void;
+    const { service } = makeService({
+      restore: () => new Promise((resolve) => { resolveRestore = resolve; }),
+    });
+    const state = makeState();
+    const controller = createIdentityController(service, state);
+
+    const restoring = controller.initialize();
+    await controller.logout();
+    resolveRestore({ ok: true, data: session });
+    await restoring;
+
+    expect(state).toEqual({ status: "guest", session: null, failure: null });
+  });
+
+  test("does not restore a profile save after logout races with the cloud", async () => {
+    let resolveUpdate!: (value: { ok: true; data: IdentitySession["user"] }) => void;
+    const { service } = makeService({
+      updateProfile: () => new Promise((resolve) => { resolveUpdate = resolve; }),
+    });
+    const state: IdentityState = { status: "authenticated", session, failure: null };
+    const controller = createIdentityController(service, state);
+
+    const saving = controller.saveProfile({ nickname: "New Name", avatar: null });
+    await controller.logout();
+    resolveUpdate({ ok: true, data: { uid: "user-1", nickname: "New Name" } });
+    await saving;
+
+    expect(state).toEqual({ status: "guest", session: null, failure: null });
+  });
+
+  test("rejects an invalid draft without calling the cloud profile service", async () => {
+    const updateProfile = vi.fn(async () => ({ ok: true as const, data: session.user }));
+    const { service } = makeService({ updateProfile });
+    const state: IdentityState = { status: "authenticated", session, failure: null };
+
+    const result = await createIdentityController(service, state).saveProfile({
+      nickname: "豆".repeat(21),
+      avatar: null,
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "INVALID_PROFILE" } });
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(state).toEqual({ status: "authenticated", session, failure: { code: "INVALID_PROFILE" } });
+  });
+
+  test("normalizes a valid draft before calling the cloud profile service", async () => {
+    const updateProfile = vi.fn(async () => ({ ok: true as const, data: session.user }));
+    const { service } = makeService({ updateProfile });
+    const state: IdentityState = { status: "authenticated", session, failure: null };
+
+    await createIdentityController(service, state).saveProfile({ nickname: "  小   豆  ", avatar: null });
+
+    expect(updateProfile).toHaveBeenCalledWith({ nickname: "小 豆", avatar: null });
   });
 
   test("profile success replaces only the authenticated user fields", async () => {

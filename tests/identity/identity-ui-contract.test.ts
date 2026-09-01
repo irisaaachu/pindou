@@ -149,9 +149,54 @@ describe("identity UI runtime", () => {
     expect(runtime.profileEditorVisible).toBe(false);
   });
 
-  test("presents the stable privacy statement without claiming photo upload", () => {
+  test("logs out once and closes the profile editor while sign-out is pending", async () => {
+    let releaseSignOut!: () => void;
+    const signOut = vi.fn(() => new Promise<void>((resolve) => { releaseSignOut = resolve; }));
+    const service = makeService({
+      restore: vi.fn(async () => ({ ok: true as const, data: session })),
+      signOut,
+    });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+    runtime.openProfileEditor();
+
+    const first = runtime.logout();
+    const second = runtime.logout();
+
+    expect(runtime.profileEditorVisible).toBe(false);
+    expect(signOut).toHaveBeenCalledTimes(1);
+    releaseSignOut();
+    await Promise.all([first, second]);
+    expect(runtime.state).toEqual({ status: "guest", session: null, failure: null });
+  });
+
+  test("keeps authenticated profile errors visible without calling the cloud for an invalid draft", async () => {
+    const updateProfile = vi.fn(async () => ({ ok: true as const, data: session.user }));
+    const service = makeService({
+      restore: vi.fn(async () => ({ ok: true as const, data: session })),
+      updateProfile,
+    });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+
+    const saved = await runtime.saveProfile({ nickname: "豆".repeat(21), avatar: null });
+
+    expect(saved).toBe(false);
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(getIdentityPresentation(runtime.state).detail).toBe("资料格式不符合要求，请检查昵称或头像。");
+  });
+
+  test("presents the approved default profile name and authenticated profile failure", () => {
+    expect(getIdentityPresentation({
+      status: "authenticated",
+      session: { user: { uid: "user-1" }, expiresAt: 2_000 },
+      failure: { code: "LOGIN_FAILED" },
+    })).toMatchObject({ title: "拼豆朋友", detail: "资料保存未完成，请稍后重试。" });
+  });
+
+  test("presents the stable privacy statement for user-initiated identity and cloud actions", () => {
     expect(getIdentityPresentation({ status: "guest", session: null, failure: null }).privacy).toBe(
-      "微信登录不会上传你的原始创作照片。",
+      "微信身份、资料设置与云作品操作均由你主动触发，不会上传你的原始创作照片。",
     );
   });
 

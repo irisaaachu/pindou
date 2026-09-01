@@ -7,6 +7,7 @@ import type {
   IdentityUser,
   ProfileDraft,
 } from "../../domain/identity";
+import { validateProfileDraft } from "../../domain/identity";
 
 export interface IdentityController {
   initialize(): Promise<IdentityResult<IdentitySession | null>>;
@@ -31,8 +32,10 @@ export function createIdentityController(
   }
 
   async function initialize(): Promise<IdentityResult<IdentitySession | null>> {
+    const requestGeneration = generation;
     state.status = "restoring";
     const result = await service.restore();
+    if (requestGeneration !== generation) return result;
     if (!result.ok) {
       applyFailure(result);
       return result;
@@ -84,7 +87,17 @@ export function createIdentityController(
       applyFailure(result);
       return result;
     }
-    const result = await service.updateProfile(draft);
+    const validated = validateProfileDraft(draft);
+    if (!validated.ok) {
+      state.failure = validated.error;
+      return validated;
+    }
+    const requestGeneration = generation;
+    const result = await service.updateProfile({
+      nickname: validated.data.nickname || "",
+      avatar: validated.data.avatar || null,
+    });
+    if (requestGeneration !== generation) return result;
     if (result.ok) {
       state.session = { ...state.session, user: result.data };
       state.failure = null;
