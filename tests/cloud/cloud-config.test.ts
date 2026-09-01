@@ -22,35 +22,14 @@ const officialPackages = [
   ["uniCloud-aliyun/cloudfunctions/common/uni-captcha", "uni-captcha"],
   ["uniCloud-aliyun/cloudfunctions/common/uni-cloud-s2s", "uni-cloud-s2s"],
 ] as const;
-const provenanceMappings = [
-  [
-    "uni_modules/uni-id-pages/uniCloud/cloudfunctions/uni-id-co",
-    "uniCloud-aliyun/cloudfunctions/uni-id-co",
-  ],
-  [
-    "uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common",
-    "uniCloud-aliyun/cloudfunctions/common/uni-id-common",
-  ],
-  [
-    "uni_modules/uni-config-center/uniCloud/cloudfunctions/common/uni-config-center",
-    "uniCloud-aliyun/cloudfunctions/common/uni-config-center",
-  ],
-  [
-    "uni_modules/uni-open-bridge-common/uniCloud/cloudfunctions/common/uni-open-bridge-common",
-    "uniCloud-aliyun/cloudfunctions/common/uni-open-bridge-common",
-  ],
-  [
-    "uni_modules/uni-captcha/uniCloud/cloudfunctions/common/uni-captcha",
-    "uniCloud-aliyun/cloudfunctions/common/uni-captcha",
-  ],
-  [
-    "uni_modules/uni-cloud-s2s/uniCloud/cloudfunctions/common/uni-cloud-s2s",
-    "uniCloud-aliyun/cloudfunctions/common/uni-cloud-s2s",
-  ],
-  [
-    "uni_modules/uni-id-pages/uniCloud/database/",
-    "uniCloud-aliyun/database/",
-  ],
+const provenanceRows = [
+  "| `uni_modules/uni-id-pages/uniCloud/cloudfunctions/uni-id-co` | `uniCloud-aliyun/cloudfunctions/uni-id-co` |",
+  "| `uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common` | `uniCloud-aliyun/cloudfunctions/common/uni-id-common` |",
+  "| `uni_modules/uni-config-center/uniCloud/cloudfunctions/common/uni-config-center` | `uniCloud-aliyun/cloudfunctions/common/uni-config-center` |",
+  "| `uni_modules/uni-open-bridge-common/uniCloud/cloudfunctions/common/uni-open-bridge-common` | `uniCloud-aliyun/cloudfunctions/common/uni-open-bridge-common` |",
+  "| `uni_modules/uni-captcha/uniCloud/cloudfunctions/common/uni-captcha` | `uniCloud-aliyun/cloudfunctions/common/uni-captcha` |",
+  "| `uni_modules/uni-cloud-s2s/uniCloud/cloudfunctions/common/uni-cloud-s2s` | `uniCloud-aliyun/cloudfunctions/common/uni-cloud-s2s` |",
+  "| contents of `uni_modules/uni-id-pages/uniCloud/database/` | `uniCloud-aliyun/database/` |",
 ] as const;
 
 function listJsonFiles(directory: string): string[] {
@@ -136,10 +115,7 @@ describe("uniCloud configuration hygiene", () => {
 
     expect(provenance).toContain("https://gitcode.com/dcloud/hello_uni-id-pages.git");
     expect(provenance).toContain("d0b4b8ad6f837a62eaab2fd49f951e4d74926aa8");
-    for (const [source, destination] of provenanceMappings) {
-      expect(provenance).toContain(source);
-      expect(provenance).toContain(destination);
-    }
+    for (const row of provenanceRows) expect(provenance).toContain(row);
     expect(provenance).toContain(
       "uniCloud-aliyun/cloudfunctions/common/uni-captcha/LICENSE.md",
     );
