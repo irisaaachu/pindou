@@ -22,6 +22,36 @@ const officialPackages = [
   ["uniCloud-aliyun/cloudfunctions/common/uni-captcha", "uni-captcha"],
   ["uniCloud-aliyun/cloudfunctions/common/uni-cloud-s2s", "uni-cloud-s2s"],
 ] as const;
+const provenanceMappings = [
+  [
+    "uni_modules/uni-id-pages/uniCloud/cloudfunctions/uni-id-co",
+    "uniCloud-aliyun/cloudfunctions/uni-id-co",
+  ],
+  [
+    "uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common",
+    "uniCloud-aliyun/cloudfunctions/common/uni-id-common",
+  ],
+  [
+    "uni_modules/uni-config-center/uniCloud/cloudfunctions/common/uni-config-center",
+    "uniCloud-aliyun/cloudfunctions/common/uni-config-center",
+  ],
+  [
+    "uni_modules/uni-open-bridge-common/uniCloud/cloudfunctions/common/uni-open-bridge-common",
+    "uniCloud-aliyun/cloudfunctions/common/uni-open-bridge-common",
+  ],
+  [
+    "uni_modules/uni-captcha/uniCloud/cloudfunctions/common/uni-captcha",
+    "uniCloud-aliyun/cloudfunctions/common/uni-captcha",
+  ],
+  [
+    "uni_modules/uni-cloud-s2s/uniCloud/cloudfunctions/common/uni-cloud-s2s",
+    "uniCloud-aliyun/cloudfunctions/common/uni-cloud-s2s",
+  ],
+  [
+    "uni_modules/uni-id-pages/uniCloud/database/",
+    "uniCloud-aliyun/database/",
+  ],
+] as const;
 
 function listJsonFiles(directory: string): string[] {
   if (!existsSync(directory)) return [];
@@ -105,10 +135,40 @@ describe("uniCloud configuration hygiene", () => {
     );
 
     expect(provenance).toContain("https://gitcode.com/dcloud/hello_uni-id-pages.git");
-    expect(provenance).toMatch(/\b[0-9a-f]{40}\b/);
-    for (const [destination] of officialPackages) expect(provenance).toContain(destination);
-    expect(provenance).toContain("uni_modules/uni-id-pages/uniCloud/database/");
-    expect(provenance).toMatch(/license/i);
+    expect(provenance).toContain("d0b4b8ad6f837a62eaab2fd49f951e4d74926aa8");
+    for (const [source, destination] of provenanceMappings) {
+      expect(provenance).toContain(source);
+      expect(provenance).toContain(destination);
+    }
+    expect(provenance).toContain(
+      "uniCloud-aliyun/cloudfunctions/common/uni-captcha/LICENSE.md",
+    );
+  });
+
+  test("documents the safe local deployment order and complete common roots", () => {
+    const guide = readFileSync(
+      resolve(process.cwd(), "docs/unicloud-aliyun-setup.md"),
+      "utf8",
+    );
+    const safetyGate = guide.indexOf("运行 `npm run check`");
+    const realConfig = guide.indexOf("在本地创建已忽略的");
+    const commonUpload = guide.indexOf("按以下清单逐一上传全部 common 模块");
+    const objectUpload = guide.indexOf("再上传 `uni-id-co` 和 `pindou-profile`");
+
+    expect(safetyGate).toBeGreaterThan(-1);
+    expect(safetyGate).toBeLessThan(realConfig);
+    expect(commonUpload).toBeGreaterThan(realConfig);
+    expect(commonUpload).toBeLessThan(objectUpload);
+    for (const packageName of [
+      "uni-id-common",
+      "uni-config-center",
+      "uni-open-bridge-common",
+      "uni-captcha",
+      "uni-cloud-s2s",
+      "pindou-cloud-common",
+    ]) {
+      expect(guide).toContain(`\`${packageName}\``);
+    }
   });
 
   test("contains no account-bound AppID or AppSecret in JSON", () => {
