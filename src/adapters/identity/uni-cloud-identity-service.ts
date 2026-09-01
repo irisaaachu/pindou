@@ -90,6 +90,8 @@ export function createUniCloudIdentityService(
 ): IdentityService {
   let operationGeneration = 0;
   let pendingSdkLogin: Promise<{ errCode: string | number; newToken?: { token: string; tokenExpired: number } }> | null = null;
+  let loginPromise: Promise<IdentityResult<IdentitySession>> | null = null;
+  let loginGeneration: number | null = null;
 
   function clearIdentityStorage(expectedGeneration?: number): void {
     if (expectedGeneration !== undefined && expectedGeneration !== operationGeneration) return;
@@ -113,9 +115,24 @@ export function createUniCloudIdentityService(
 
   async function signIn(): Promise<IdentityResult<IdentitySession>> {
     if (dependencies.platform !== "mp-weixin") return failure("PLATFORM_UNSUPPORTED");
-    if (pendingSdkLogin) return failure("LOGIN_FAILED");
+    if (loginPromise) {
+      return loginGeneration === operationGeneration ? loginPromise : failure("LOGIN_FAILED");
+    }
     const requestGeneration = operationGeneration;
 
+    const current = completeSignIn(requestGeneration);
+    const tracked = current.finally(() => {
+      if (loginPromise === tracked) {
+        loginPromise = null;
+        loginGeneration = null;
+      }
+    });
+    loginPromise = tracked;
+    loginGeneration = requestGeneration;
+    return tracked;
+  }
+
+  async function completeSignIn(requestGeneration: number): Promise<IdentityResult<IdentitySession>> {
     try {
       const { code } = await dependencies.loginWeixin();
       if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
