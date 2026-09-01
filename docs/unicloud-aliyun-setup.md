@@ -8,7 +8,7 @@ Milestone 5 已在代码库中准备官方 uni-id 资产和拼豆身份代码，
 2. 保持真实 `uni-id/config.json` 尚未创建，在项目根目录运行 `npm run check`。这是代码库安全门，会校验真实配置不存在且已忽略。
 3. 登录 HBuilderX，将 `uniCloud-aliyun` 关联到你的阿里云版 uniCloud 服务空间。
 4. 在 HBuilderX 中仅在本地为 `src/manifest.json` 设置 DCloud AppID 和微信小程序 AppID。
-5. 复制 `uniCloud-aliyun/config/uni-id.config.example.json` 的结构，在本地创建已忽略的 `uniCloud-aliyun/cloudfunctions/common/uni-config-center/uni-id/config.json`，再填入你自己的 DCloud AppID、微信 AppID 和 AppSecret。
+5. 复制 `uniCloud-aliyun/config/uni-id.config.example.json` 的结构，在本地创建已忽略的 `uniCloud-aliyun/cloudfunctions/common/uni-config-center/uni-id/config.json`，再填入你自己的 DCloud AppID、微信 AppID 和 AppSecret。同时为 `tokenSecret` 生成足够长度的强随机密钥；安全保存该值，并在后续部署中保持不变，绝不提交到 Git。
 6. 先上传 `uniCloud-aliyun/database` 中的 DB Schema。
 7. 按以下清单逐一上传全部 common 模块：官方 `uni-id-common`、`uni-config-center`、`uni-open-bridge-common`、`uni-captcha`、`uni-cloud-s2s`，以及拼豆自有 `pindou-cloud-common`。官方的第六个资产 `uni-id-co` 是云对象而不是 common 模块，在下一步上传。
 8. common 模块全部成功后，再上传 `uni-id-co` 和 `pindou-profile`。

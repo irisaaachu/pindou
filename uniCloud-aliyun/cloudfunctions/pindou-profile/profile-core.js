@@ -28,7 +28,9 @@ function decodeAvatar(avatar) {
   }
 
   const bytes = Buffer.from(avatar.base64, "base64");
-  if (bytes.length < 1 || bytes.length > MAX_AVATAR_BYTES) throw invalidProfile();
+  if (bytes.length < 1 || bytes.length > MAX_AVATAR_BYTES || bytes.length !== avatar.size) {
+    throw invalidProfile();
+  }
 
   const isPng = bytes.length >= 8
     && bytes.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"));

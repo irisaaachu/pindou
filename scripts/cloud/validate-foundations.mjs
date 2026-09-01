@@ -42,7 +42,6 @@ for (const collection of EXPECTED_COLLECTIONS) {
 
 issues.push(...validateFoundationSchemas(schemas));
 
-const availablePackages = new Set(officialPackages.map(([, name]) => name));
 for (const [directory, expectedName] of officialPackages) {
   const packagePath = `${directory}/package.json`;
   if (!(await exists(packagePath))) {
@@ -52,8 +51,16 @@ for (const [directory, expectedName] of officialPackages) {
   const packageJson = JSON.parse(await readFile(resolve(process.cwd(), packagePath), "utf8"));
   if (packageJson.name !== expectedName) issues.push(`Unexpected package name: ${packagePath}`);
   for (const [name, value] of Object.entries(packageJson.dependencies ?? {})) {
-    if (typeof value === "string" && value.startsWith("file:") && !availablePackages.has(name)) {
-      issues.push(`Missing common dependency ${name} required by ${packagePath}`);
+    if (typeof value !== "string" || !value.startsWith("file:")) continue;
+    const dependencyPath = resolve(process.cwd(), directory, value.slice("file:".length));
+    const dependencyPackagePath = resolve(dependencyPath, "package.json");
+    if (!(await exists(dependencyPackagePath))) {
+      issues.push(`Missing common dependency path for ${name} required by ${packagePath}`);
+      continue;
+    }
+    const dependencyPackage = JSON.parse(await readFile(dependencyPackagePath, "utf8"));
+    if (dependencyPackage.name !== name) {
+      issues.push(`Common dependency name mismatch for ${name} required by ${packagePath}`);
     }
   }
 }

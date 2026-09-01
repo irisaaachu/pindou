@@ -61,6 +61,7 @@ describe("uniCloud configuration hygiene", () => {
     const weixin = config["mp-weixin"].oauth.weixin;
 
     expect(config.dcloudAppid).toMatch(/^REPLACE_LOCALLY_/);
+    expect(config.tokenSecret).toBe("REPLACE_LOCALLY_STRONG_RANDOM_TOKEN_SECRET");
     expect(weixin.appid).toMatch(/^REPLACE_LOCALLY_/);
     expect(weixin.appsecret).toMatch(/^REPLACE_LOCALLY_/);
   });
@@ -93,18 +94,26 @@ describe("uniCloud configuration hygiene", () => {
   });
 
   test("closes every vendored file common-module dependency", () => {
-    const availablePackages = new Set<string>(officialPackages.map(([, name]) => name));
-    const missing = officialPackages.flatMap(([directory]) => {
+    const issues = officialPackages.flatMap(([directory]) => {
       const packageJson = JSON.parse(
         readFileSync(resolve(process.cwd(), directory, "package.json"), "utf8"),
       );
       return Object.entries(packageJson.dependencies ?? {})
         .filter(([, value]) => typeof value === "string" && value.startsWith("file:"))
-        .map(([name]) => name)
-        .filter((name) => !availablePackages.has(name));
+        .flatMap(([name, value]) => {
+          const dependencyPath = resolve(
+            process.cwd(),
+            directory,
+            (value as string).slice("file:".length),
+          );
+          const dependencyManifest = resolve(dependencyPath, "package.json");
+          if (!existsSync(dependencyManifest)) return [`${name}:missing`];
+          const dependencyPackage = JSON.parse(readFileSync(dependencyManifest, "utf8"));
+          return dependencyPackage.name === name ? [] : [`${name}:name-mismatch`];
+        });
     });
 
-    expect(missing).toEqual([]);
+    expect(issues).toEqual([]);
   });
 
   test("records immutable official provenance, mappings and licenses", () => {
@@ -144,6 +153,26 @@ describe("uniCloud configuration hygiene", () => {
       "pindou-cloud-common",
     ]) {
       expect(guide).toContain(`\`${packageName}\``);
+    }
+    expect(guide).toContain("tokenSecret");
+    expect(guide).toContain("强随机密钥");
+    expect(guide).toContain("后续部署中保持不变");
+  });
+
+  test("prevents owners from writing protected profile fields directly", () => {
+    const schema = JSON.parse(
+      readFileSync(
+        resolve(process.cwd(), "uniCloud-aliyun/database/uni-id-users.schema.json"),
+        "utf8",
+      ),
+    );
+
+    for (const field of ["avatar", "avatar_file", "nickname"]) {
+      const write = schema.properties[field].permission.write;
+      expect(write, field).not.toContain("doc._id == auth.uid");
+      expect(write, field).toBe(
+        "'CREATE_UNI_ID_USERS' in auth.permission || 'UPDATE_UNI_ID_USERS' in auth.permission",
+      );
     }
   });
 

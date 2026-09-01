@@ -65,11 +65,16 @@ module.exports = {
       if (update.nickname) data.nickname = update.nickname;
       if (update.avatar) {
         const cloudPath = `pindou/avatars/${this.verifiedUid}/profile.${update.avatar.extension}`;
-        data.avatar = await uniCloud.uploadFile({
+        const upload = await uniCloud.uploadFile({
           cloudPath,
           fileContent: update.avatar.bytes,
           cloudPathAsRealPath: true,
         });
+        if (!upload || typeof upload !== "object"
+          || typeof upload.fileID !== "string" || !upload.fileID) {
+          throw publicError("INTERNAL_ERROR");
+        }
+        data.avatar = upload.fileID;
       }
       await db.collection("uni-id-users").doc(this.verifiedUid).update(data);
       return this.getProfile();

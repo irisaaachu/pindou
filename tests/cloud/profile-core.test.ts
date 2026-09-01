@@ -62,6 +62,17 @@ describe("pindou profile core", () => {
   });
 
   test.each([
+    ["smaller", pngBytes.length - 1],
+    ["larger", pngBytes.length + 1],
+  ])("rejects a declared size %s than decoded avatar bytes", (_direction, size) => {
+    expect(() => decodeAvatar({
+      mimeType: "image/png",
+      size,
+      base64: pngBytes.toString("base64"),
+    })).toThrow("INVALID_PROFILE");
+  });
+
+  test.each([
     ["image/png", pngBytes, "png"],
     ["image/jpeg", jpegBytes, "jpg"],
   ])("decodes valid %s avatars once with a fixed extension", (mimeType, bytes, extension) => {
@@ -103,6 +114,29 @@ describe("pindou profile cloud object", () => {
     expect(fixture.doc.mock.calls).toEqual([["verified-user"]]);
     expect(fixture.doc).not.toHaveBeenCalledWith("attacker");
     expect(result).toEqual({ ok: true, data: { uid: "verified-user" } });
+  });
+
+  test.each([
+    ["missing fileID", { requestId: "request-secret" }],
+    ["empty fileID", { fileID: "", requestId: "request-secret" }],
+    ["non-string fileID", { fileID: 42, requestId: "request-secret" }],
+    ["non-object response", "cloud://unexpected"],
+  ])("sanitizes an upload response with %s", async (_name, uploadResult) => {
+    const fixture = loadCloudObject({ uid: "verified-user", uploadResult });
+    const context = makeContext(fixture.cloudObject);
+
+    await fixture.cloudObject._before.call(context);
+    const result = await fixture.cloudObject.updateProfile.call(context, {
+      avatar: {
+        mimeType: "image/png",
+        size: pngBytes.length,
+        base64: pngBytes.toString("base64"),
+      },
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "INTERNAL_ERROR" } });
+    expect(JSON.stringify(result)).not.toContain("request-secret");
+    expect(fixture.update).not.toHaveBeenCalled();
   });
 
   test("updateProfile ignores attacker identity fields and uses only the checked UID", async () => {
@@ -218,6 +252,7 @@ function loadCloudObject(options: {
   clientInfoError?: Error;
   createInstanceError?: Error;
   databaseError?: Error;
+  uploadResult?: unknown;
 } = {}) {
   const checkToken = vi.fn(async () => {
     if (options.checkTokenResult instanceof Error) throw options.checkTokenResult;
@@ -233,7 +268,10 @@ function loadCloudObject(options: {
     return { data: [{}] };
   });
   const doc = vi.fn(() => ({ get, update }));
-  const uploadFile = vi.fn(async ({ cloudPath }) => `cloud://${cloudPath}`);
+  const uploadFile = vi.fn(async ({ cloudPath }) => options.uploadResult ?? {
+    fileID: `cloud://${cloudPath}`,
+    requestId: "request-id",
+  });
   const common = {
     success: (data: unknown) => ({ ok: true, data }),
     failure: (code: string) => ({ ok: false, error: { code } }),
