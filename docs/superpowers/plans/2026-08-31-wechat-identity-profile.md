@@ -39,7 +39,7 @@
 - Produces: `IdentityUser`, `IdentitySession`, `IdentityState`, `IdentityFailureCode`, `IdentityResult<T>`, `ProfileDraft`, `IdentityService`, `normalizeNickname(value)` and `validateProfileDraft(draft)`.
 - Consumes: no Vue, uni-app, uniCloud or uni-id APIs.
 
-- [ ] **Step 1: Write failing profile behavior tests**
+- [x] **Step 1: Write failing profile behavior tests**
 
 Create literal cases proving:
 
@@ -61,13 +61,13 @@ expect(validateProfileDraft({
 
 Avatar validation accepts only `image/jpeg` or `image/png`, non-empty base64 and byte sizes from 1 through 1,048,576.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- tests/identity/profile-validation.test.ts`
 
 Expected: FAIL because `src/domain/identity` does not exist.
 
-- [ ] **Step 3: Add exact domain contracts**
+- [x] **Step 3: Add exact domain contracts**
 
 Define:
 
@@ -111,11 +111,11 @@ export interface IdentityService {
 
 `IdentityState` has `status`, `session` and `failure`; its status union is `guest | restoring | signing-in | authenticated | error`.
 
-- [ ] **Step 4: Implement minimal normalization and validation**
+- [x] **Step 4: Implement minimal normalization and validation**
 
 Trim leading/trailing whitespace, collapse internal whitespace to one space, count Unicode code points with `Array.from`, treat an empty nickname as unset and validate avatar metadata without decoding it in domain code.
 
-- [ ] **Step 5: Run focused tests, lint and type checking**
+- [x] **Step 5: Run focused tests, lint and type checking**
 
 Run: `npm test -- tests/identity/profile-validation.test.ts && npm run lint && npm run type-check`
 
@@ -134,7 +134,7 @@ Expected: all commands exit `0`.
 - Consumes: `IdentityService`, `IdentityState`, `IdentityResult`, `ProfileDraft` from Task 1 and an injected `confirmConsent(): Promise<boolean>`.
 - Produces: `createIdentityController(service, state)` with `initialize()`, `requestAuthenticatedAccess(confirmConsent)`, `saveProfile(draft)` and `logout()`.
 
-- [ ] **Step 1: Write failing controller tests**
+- [x] **Step 1: Write failing controller tests**
 
 Use small behavior fakes and literal outcomes to prove:
 
@@ -149,17 +149,17 @@ Use small behavior fakes and literal outcomes to prove:
 
 The cancellation assertion must observe the controller result and service call count; it must not assert only that a mock exists.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- tests/identity/identity-controller.test.ts`
 
 Expected: FAIL because the controller module does not exist.
 
-- [ ] **Step 3: Implement the minimal state machine**
+- [x] **Step 3: Implement the minimal state machine**
 
 Mutate the provided state object in place so the same controller works with a plain test object and a Vue `reactive` object. Keep one private `loginPromise`; clear it in `finally`. Return existing authenticated sessions without asking for consent again.
 
-- [ ] **Step 4: Run controller and domain tests**
+- [x] **Step 4: Run controller and domain tests**
 
 Run: `npm test -- tests/identity/identity-controller.test.ts tests/identity/profile-validation.test.ts`
 
@@ -195,7 +195,7 @@ export interface IdentityPlatformDependencies {
 }
 ```
 
-- [ ] **Step 1: Write failing adapter tests**
+- [x] **Step 1: Write failing adapter tests**
 
 Prove these real adapter outcomes:
 
@@ -207,21 +207,21 @@ Prove these real adapter outcomes:
 - Cloud import/missing-space failures map to `CLOUD_NOT_CONFIGURED` and other rejected login responses map to `LOGIN_FAILED`.
 - Logout removes only the two standard uni-id keys and the Pindou snapshot.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- tests/identity/uni-cloud-identity-service.test.ts`
 
 Expected: FAIL because the adapter does not exist.
 
-- [ ] **Step 3: Implement the pure adapter**
+- [x] **Step 3: Implement the pure adapter**
 
 Use the injected dependencies only. Treat `uni_id_token_expired` as epoch milliseconds. Never log raw responses. After `loginByWeixin`, require the SDK-managed token metadata and call `pindou-profile.getProfile()` to obtain the verified UID and profile.
 
-- [ ] **Step 4: Add the runtime platform dependency factory**
+- [x] **Step 4: Add the runtime platform dependency factory**
 
 Under `#ifdef MP-WEIXIN`, wrap `uni.login({ provider: "weixin" })`, `uniCloud.importObject("uni-id-co").loginByWeixin({ code })` and `uniCloud.importObject("pindou-profile")`. Under other platform branches, expose `platform` but make login dependencies reject with the adapter's unsupported path. Use `uni.getStorageSync`, `uni.setStorageSync` and `uni.removeStorageSync` only in this file.
 
-- [ ] **Step 5: Run adapter tests, lint and type checking**
+- [x] **Step 5: Run adapter tests, lint and type checking**
 
 Run: `npm test -- tests/identity/uni-cloud-identity-service.test.ts && npm run lint && npm run type-check`
 
@@ -243,7 +243,7 @@ Expected: all commands exit `0`.
 - Consumes: `uni-id-common.createInstance({ clientInfo })`, `this.getUniIdToken()`, `pindou-cloud-common` envelopes and the `uni-id-users` collection.
 - Produces: `pindou-profile.getProfile()` and `pindou-profile.updateProfile({ nickname, avatar })`; pure exports `normalizeCloudNickname`, `decodeAvatar`, `buildProfileUpdate` for Node tests.
 
-- [ ] **Step 1: Write failing cloud-core tests**
+- [x] **Step 1: Write failing cloud-core tests**
 
 Use real base64 fixtures for a minimal JPEG header and PNG signature. Prove:
 
@@ -254,27 +254,27 @@ Use real base64 fixtures for a minimal JPEG header and PNG signature. Prove:
 - An empty normalized nickname produces a `clearNickname` instruction so an existing optional nickname can be removed deliberately.
 - Identity resolution ignores a second client-supplied UID argument.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Run: `npm test -- tests/cloud/profile-core.test.ts tests/cloud/cloud-common.test.ts`
 
 Expected: FAIL because `pindou-profile` does not exist.
 
-- [ ] **Step 3: Implement the pure validation core**
+- [x] **Step 3: Implement the pure validation core**
 
 Decode base64 once, compare the decoded byte count with the declared size, check JPEG bytes `FF D8 FF` or PNG bytes `89 50 4E 47 0D 0A 1A 0A`, and return only sanitized nickname/avatar metadata. Represent an explicitly empty nickname as `clearNickname: true`; the cloud wrapper converts that flag to `db.command.remove()` and never stores the control flag.
 
-- [ ] **Step 4: Implement authenticated cloud-object methods**
+- [x] **Step 4: Implement authenticated cloud-object methods**
 
 In `_before`, create the uni-id instance from `this.getClientInfo()`, obtain the token with `this.getUniIdToken()`, call `checkToken(token)` and store only the verified UID. `getProfile()` queries `uni-id-users.doc(uid)` and returns UID, optional nickname and a temporary avatar URL. `updateProfile()` validates input, uploads avatar bytes on the server to `pindou/avatars/<verified-uid>/profile.<ext>` with `cloudPathAsRealPath: true`, stores the resulting file ID, and updates only `nickname` and `avatar`.
 
 No method accepts a UID parameter. Map missing/invalid tokens to `IDENTITY_REQUIRED`, malformed profiles to `INVALID_REQUEST`/`INVALID_PROFILE`, and unexpected errors to `INTERNAL_ERROR` without returning the caught message.
 
-- [ ] **Step 5: Declare exact cloud dependencies**
+- [x] **Step 5: Declare exact cloud dependencies**
 
 `package.json` is private and declares `uni-id-common` and `pindou-cloud-common` as cloud common-module dependencies using the dependency format present in the imported official module. Do not add registry packages for modules supplied by uniCloud common directories.
 
-- [ ] **Step 6: Run cloud tests and cloud foundation validation**
+- [x] **Step 6: Run cloud tests and cloud foundation validation**
 
 Run: `npm test -- tests/cloud/profile-core.test.ts tests/cloud/cloud-common.test.ts && npm run check:cloud && npm run lint`
 
@@ -298,7 +298,7 @@ Expected: all commands exit `0`.
 - Consumes: Tasks 1-3 controller and adapter.
 - Produces: singleton `identityRuntime` with reactive `state`, `initialize`, `requestCloudAccess`, `saveProfile` and `logout`; UI emits `confirm`, `cancel`, `save` and `close`.
 
-- [ ] **Step 1: Write failing UI contract tests**
+- [x] **Step 1: Write failing UI contract tests**
 
 Render-free tests exercise the real runtime facade and presentation state rather than grepping Vue source or asserting CSS text. Prove:
 
@@ -310,29 +310,29 @@ Render-free tests exercise the real runtime facade and presentation state rather
 
 Keep wording assertions limited to the user-visible privacy statement that original creation photos are not uploaded by login.
 
-- [ ] **Step 2: Run focused test and verify RED**
+- [x] **Step 2: Run focused test and verify RED**
 
 Run: `npm test -- tests/identity/identity-ui-contract.test.ts`
 
 Expected: FAIL because the runtime and components do not exist.
 
-- [ ] **Step 3: Create the reactive runtime**
+- [x] **Step 3: Create the reactive runtime**
 
 Wrap one `IdentityState` in Vue `reactive`, construct the controller once, and initialize it from `src/main.ts` without blocking app creation. Keep consent visibility and profile-editor visibility in the runtime facade so pages do not duplicate flow logic. Put stable Chinese status labels and privacy copy in `presentation.ts`; both pages consume the same runtime methods and presentation values.
 
-- [ ] **Step 4: Implement the consent dialog**
+- [x] **Step 4: Implement the consent dialog**
 
 Use the existing warm off-white, blush, mint, rounded-card and typography tokens. The dialog explains that login identifies cloud works and does not upload original creation photos. It has `同意并继续` and `暂不登录`; cancellation is silent.
 
-- [ ] **Step 5: Implement the profile editor**
+- [x] **Step 5: Implement the profile editor**
 
 For MP-WEIXIN, use a button with `open-type="chooseAvatar"` and an input with `type="nickname"`. Read the chosen temporary avatar as base64 in the runtime/platform helper, use `uni.getFileInfo` for byte size, derive JPEG/PNG MIME type from the decoded signature, pass those values through `ProfileDraft`, show a local preview, and upload only after `保存资料`. Other platforms show the default profile and a concise unsupported note without invoking pickers.
 
-- [ ] **Step 6: Replace static page states surgically**
+- [x] **Step 6: Replace static page states surgically**
 
 My page renders guest, busy, authenticated and error states without changing unrelated privacy/about rows. Create page makes the cloud card actionable. After identity success it displays `身份已就绪，云作品将在后续版本开放` and does not claim data was saved or loaded.
 
-- [ ] **Step 7: Run identity tests and both production builds**
+- [x] **Step 7: Run identity tests and both production builds**
 
 Run: `npm test -- tests/identity && npm run lint && npm run type-check && npm run build:mp-weixin && npm run build:h5`
 
@@ -347,6 +347,7 @@ Expected: all commands exit `0`; H5 does not attempt a WeChat login at build or 
 - Create from official source: `uniCloud-aliyun/cloudfunctions/common/uni-id-common/**`
 - Create from official source: `uniCloud-aliyun/cloudfunctions/common/uni-config-center/**` except ignored real `uni-id/config.json`
 - Create from official source as required by declared dependencies: `uniCloud-aliyun/cloudfunctions/common/uni-open-bridge-common/**`
+- Create from official source as required by the pinned `uni-id-co` dependency closure: `uniCloud-aliyun/cloudfunctions/common/{uni-captcha,uni-cloud-s2s}/**`
 - Create from official source: contents of `uni_modules/uni-id-pages/uniCloud/database/**` under `uniCloud-aliyun/database/`
 - Create: `docs/vendor/dcloud-uni-id.md`
 - Modify: `scripts/cloud/validate-foundations.mjs`
@@ -359,23 +360,23 @@ Expected: all commands exit `0`; H5 does not attempt a WeChat login at build or 
 - Consumes: official DCloud source repository `https://gitcode.com/dcloud/hello_uni-id-pages.git` and Milestone 4 config example.
 - Produces: deployable official cloud dependencies, provenance record, stronger repository validation and an exact manual acceptance checklist.
 
-- [ ] **Step 1: Add a failing official-module validation test**
+- [x] **Step 1: Add a failing official-module validation test**
 
 Extend configuration tests to load official package metadata and assert that:
 
-- `uni-id-co`, `uni-id-common`, `uni-config-center` and `uni-open-bridge-common` deployable roots exist.
+- `uni-id-co`, `uni-id-common`, `uni-config-center`, `uni-open-bridge-common`, `uni-captcha` and `uni-cloud-s2s` deployable roots exist.
 - Their package metadata names match their directory names.
 - The real `uni-config-center/uni-id/config.json` remains ignored and untracked.
 - No imported official file contains a real Pindou AppID or AppSecret.
 - `docs/vendor/dcloud-uni-id.md` records the upstream URL, resolved full commit SHA, imported paths and upstream license files.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- tests/cloud/cloud-config.test.ts`
 
 Expected: FAIL because official module roots and provenance record are absent.
 
-- [ ] **Step 3: Import only deployable official cloud assets**
+- [x] **Step 3: Import only deployable official cloud assets**
 
 Clone the official repository to a temporary directory, resolve its current `dev` HEAD to a full SHA, and copy:
 
@@ -383,20 +384,22 @@ Clone the official repository to a temporary directory, resolve its current `dev
 - `uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common`
 - `uni_modules/uni-config-center/uniCloud/cloudfunctions/common/uni-config-center`
 - `uni_modules/uni-open-bridge-common/uniCloud/cloudfunctions/common/uni-open-bridge-common`
+- `uni_modules/uni-captcha/uniCloud/cloudfunctions/common/uni-captcha`
+- `uni_modules/uni-cloud-s2s/uniCloud/cloudfunctions/common/uni-cloud-s2s`
 - `uni_modules/uni-id-pages/uniCloud/database/**`
 - every upstream license file governing the copied paths
 
 Do not copy the `uni-id-pages` UI, demo pages, build output, account configuration or sample user data. Restore the ignored local `config.json` only from the Pindou example after copying so Git never sees upstream/sample credentials as a deployable configuration.
 
-- [ ] **Step 4: Record provenance and validate dependency closure**
+- [x] **Step 4: Record provenance and validate dependency closure**
 
 Write `docs/vendor/dcloud-uni-id.md` with the exact full SHA and file mapping. Recursively inspect the copied cloud `package.json` files and ensure every declared uniCloud common dependency has a copied root. Run each cloud object's required `npm install` only when it declares registry dependencies; never edit upstream source to silence an install error.
 
-- [ ] **Step 5: Extend the executable cloud check**
+- [x] **Step 5: Extend the executable cloud check**
 
 Keep the five Pindou collection checks and add deterministic checks for required official roots, Pindou profile object files and the ignored secret path. The validator reports paths only, never file contents from real ignored configuration.
 
-- [ ] **Step 6: Update deployment documentation**
+- [x] **Step 6: Update deployment documentation**
 
 Document the exact HBuilderX order:
 
@@ -409,11 +412,11 @@ Document the exact HBuilderX order:
 
 State that actual AppID/AppSecret entry and signed-in deployment remain the user's local step and are not complete merely because GitHub contains code.
 
-- [ ] **Step 7: Mark the written spec implemented and the plan complete**
+- [x] **Step 7: Mark the written spec implemented and the plan complete**
 
 Change the spec status to `Implemented locally; cloud deployment pending user association` until manual cloud verification succeeds. Check each completed plan box only after its command/result has been observed.
 
-- [ ] **Step 8: Run the complete quality gate**
+- [x] **Step 8: Run the complete quality gate**
 
 Run: `npm run check && npm run build:h5`
 

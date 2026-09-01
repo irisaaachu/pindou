@@ -1,6 +1,6 @@
 # Milestone 5 WeChat Identity and Profile Design
 
-**Status:** Approved in conversation; awaiting written-spec review
+**Status:** Implemented locally; cloud deployment pending user association
 
 **Date:** 2026-08-31
 
