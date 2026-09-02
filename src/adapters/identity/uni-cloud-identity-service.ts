@@ -165,8 +165,7 @@ export function createUniCloudIdentityService(
         if (profile.error?.code === "INTERNAL_ERROR" || profile.error?.code === "INVALID_REQUEST") {
           return failure("INTERNAL_ERROR");
         }
-        clearIdentityStorage(requestGeneration);
-        return failure("SESSION_EXPIRED");
+        return failure("INTERNAL_ERROR");
       }
       const user = profile.ok ? readSnapshot(profile.data) : null;
       if (!user) {
@@ -200,6 +199,10 @@ export function createUniCloudIdentityService(
         dependencies.writeStorage(SNAPSHOT_KEY, user);
         return { ok: true, data: user };
       }
+      if (result.ok) {
+        clearIdentityStorage(requestGeneration);
+        return failure("SESSION_EXPIRED");
+      }
       if (result.error?.code === "IDENTITY_REQUIRED") {
         clearIdentityStorage(requestGeneration);
         return failure("SESSION_EXPIRED");
@@ -208,8 +211,7 @@ export function createUniCloudIdentityService(
       if (result.error?.code === "INTERNAL_ERROR" || result.error?.code === "INVALID_REQUEST") {
         return failure("INTERNAL_ERROR");
       }
-      clearIdentityStorage(requestGeneration);
-      return failure("SESSION_EXPIRED");
+      return failure("INTERNAL_ERROR");
     } catch (error) {
       if (requestGeneration !== operationGeneration) return failure("SESSION_EXPIRED");
       if (rejectedCloudCode(error) === "IDENTITY_REQUIRED") {
