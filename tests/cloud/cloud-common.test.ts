@@ -36,6 +36,10 @@ describe("pindou-cloud-common", () => {
       ok: false,
       error: { code: "PERMISSION_DENIED" },
     });
+    expect(failure("INVALID_PROFILE")).toEqual({
+      ok: false,
+      error: { code: "INVALID_PROFILE" },
+    });
   });
 
   test("does not expose unexpected internal errors", () => {

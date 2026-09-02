@@ -32,15 +32,40 @@
         </view>
         <view class="empty-state">
           <text class="empty-state__mark">02</text>
-          <text class="empty-state__title">云作品功能尚未接入</text>
-          <text class="section-copy">未来只有在你主动使用云端功能时，才会请求微信身份授权。</text>
+          <text class="empty-state__title">{{ cloudPresentation.title }}</text>
+          <text class="section-copy">{{ cloudPresentation.copy }}</text>
+          <button class="cloud-action" :loading="identityBusy" :disabled="identityBusy || cloudPresentation.ready" @tap="requestCloudWorks">
+            {{ cloudPresentation.action }}
+          </button>
         </view>
       </view>
     </view>
+
+    <ConsentDialog
+      :visible="identityRuntime.consentVisible"
+      @approve="identityRuntime.approveConsent"
+      @decline="identityRuntime.declineConsent"
+    />
   </view>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { computed } from "vue";
+
+import ConsentDialog from "../../components/identity/ConsentDialog.vue";
+import { getCreateCloudPresentation, identityRuntime } from "../../application/identity/runtime";
+
+const cloudPresentation = computed(() => getCreateCloudPresentation(identityRuntime.state));
+const identityBusy = computed(() => identityRuntime.loggingOut
+  || identityRuntime.state.status === "restoring"
+  || identityRuntime.state.status === "signing-in",
+);
+
+function requestCloudWorks(): void {
+  if (cloudPresentation.value.ready || identityBusy.value) return;
+  void identityRuntime.requestAuthenticatedAccess();
+}
+</script>
 
 <style scoped>
 .create-page {
@@ -92,6 +117,15 @@
   margin-bottom: 10rpx;
   font-size: 29rpx;
   font-weight: 700;
+}
+
+.cloud-action {
+  width: fit-content;
+  margin: 26rpx auto 0;
+  color: #fffdf9;
+  background: #79649a;
+  border-radius: 18rpx;
+  font-size: 24rpx;
 }
 
 @media (max-width: 700px) {

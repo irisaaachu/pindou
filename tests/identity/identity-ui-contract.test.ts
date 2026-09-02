@@ -1,0 +1,273 @@
+import { describe, expect, test, vi } from "vitest";
+
+import {
+  createIdentityRuntime,
+  getCreateCloudPresentation,
+  getIdentityPresentation,
+} from "../../src/application/identity/runtime";
+import { readAvatarFile } from "../../src/adapters/identity/platform";
+import type { IdentityService, IdentitySession, ProfileDraft } from "../../src/domain/identity";
+
+const session: IdentitySession = {
+  user: { uid: "user-1", nickname: "Pindou" },
+  expiresAt: Date.now() + 60_000,
+};
+
+function makeService(overrides: Partial<IdentityService> = {}): IdentityService {
+  return {
+    restore: vi.fn(async () => ({ ok: true as const, data: null })),
+    signIn: vi.fn(async () => ({ ok: true as const, data: session })),
+    updateProfile: vi.fn(async () => ({ ok: true as const, data: session.user })),
+    signOut: vi.fn(async () => undefined),
+    ...overrides,
+  };
+}
+
+describe("identity UI runtime", () => {
+  test("returns the current authenticated session without reopening consent", async () => {
+    const service = makeService({ restore: vi.fn(async () => ({ ok: true as const, data: session })) });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+
+    const result = await runtime.requestAuthenticatedAccess();
+
+    expect(result).toEqual({ ok: true, data: session });
+    expect(runtime.consentVisible).toBe(false);
+    expect(service.signIn).not.toHaveBeenCalled();
+  });
+
+  test("opens consent for a guest before the first identity call", async () => {
+    const service = makeService();
+    const runtime = createIdentityRuntime(service);
+
+    const result = await runtime.requestAuthenticatedAccess();
+
+    expect(result).toBeNull();
+    expect(runtime.consentVisible).toBe(true);
+    expect(service.signIn).not.toHaveBeenCalled();
+
+    await runtime.approveConsent();
+
+    expect(service.signIn).toHaveBeenCalledTimes(1);
+    expect(runtime.state.status).toBe("authenticated");
+  });
+
+  test.each(["restoring", "signing-in"] as const)("does not open another consent dialog while identity is %s", async (status) => {
+    let releaseRestore!: (value: { ok: true; data: null }) => void;
+    const service = makeService({
+      restore: vi.fn(() => new Promise((resolve) => { releaseRestore = resolve; })),
+    });
+    const runtime = createIdentityRuntime(service);
+
+    const restoring = runtime.initialize();
+    if (status === "signing-in") {
+      releaseRestore({ ok: true, data: null });
+      await restoring;
+      let releaseSignIn!: (value: { ok: true; data: IdentitySession }) => void;
+      service.signIn = vi.fn(() => new Promise((resolve) => { releaseSignIn = resolve; }));
+      await runtime.requestAuthenticatedAccess();
+      const signingIn = runtime.approveConsent();
+      await Promise.resolve();
+      expect(runtime.state.status).toBe("signing-in");
+      await runtime.requestAuthenticatedAccess();
+      expect(runtime.consentVisible).toBe(false);
+      releaseSignIn({ ok: true, data: session });
+      await signingIn;
+      return;
+    }
+
+    await runtime.requestAuthenticatedAccess();
+
+    expect(runtime.consentVisible).toBe(false);
+    releaseRestore({ ok: true, data: null });
+    await restoring;
+  });
+
+  test("allows a stable error state to open consent for a retry", async () => {
+    const service = makeService({ restore: vi.fn(async () => ({ ok: false as const, error: { code: "LOGIN_FAILED" as const } })) });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+
+    await runtime.requestAuthenticatedAccess();
+
+    expect(runtime.consentVisible).toBe(true);
+  });
+
+  test("cancels consent silently without calling the identity service", async () => {
+    const service = makeService();
+    const runtime = createIdentityRuntime(service);
+    await runtime.requestAuthenticatedAccess();
+
+    runtime.declineConsent();
+
+    expect(runtime.consentVisible).toBe(false);
+    expect(runtime.state).toEqual({ status: "guest", session: null, failure: null });
+    expect(service.signIn).not.toHaveBeenCalled();
+  });
+
+  test("does not send profile saves while logged out", async () => {
+    const service = makeService();
+    const runtime = createIdentityRuntime(service);
+    const draft: ProfileDraft = { nickname: "Pindou", avatar: null };
+
+    const saved = await runtime.saveProfile(draft);
+
+    expect(saved).toBe(false);
+    expect(service.updateProfile).not.toHaveBeenCalled();
+  });
+
+  test("ignores a second profile save while the first save is pending", async () => {
+    let completeSave!: (value: { ok: true; data: IdentitySession["user"] }) => void;
+    const service = makeService({
+      restore: vi.fn(async () => ({ ok: true as const, data: session })),
+      updateProfile: vi.fn(() => new Promise((resolve) => { completeSave = resolve; })),
+    });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+    runtime.openProfileEditor();
+    const draft: ProfileDraft = { nickname: "Pindou", avatar: null };
+
+    const first = runtime.saveProfile(draft);
+    const second = await runtime.saveProfile(draft);
+    completeSave({ ok: true, data: session.user });
+
+    await expect(first).resolves.toBe(true);
+    expect(second).toBe(false);
+    expect(service.updateProfile).toHaveBeenCalledTimes(1);
+  });
+
+  test("updates the displayed user and closes the editor after a successful save", async () => {
+    const updatedUser = { uid: "user-1", nickname: "豆豆", avatarUrl: "cloud://avatar" };
+    const service = makeService({
+      restore: vi.fn(async () => ({ ok: true as const, data: session })),
+      updateProfile: vi.fn(async () => ({ ok: true as const, data: updatedUser })),
+    });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+    runtime.openProfileEditor();
+
+    const saved = await runtime.saveProfile({ nickname: "豆豆", avatar: null });
+
+    expect(saved).toBe(true);
+    expect(runtime.state.session?.user).toEqual(updatedUser);
+    expect(runtime.profileEditorVisible).toBe(false);
+  });
+
+  test("logs out once and closes the profile editor while sign-out is pending", async () => {
+    let releaseSignOut!: () => void;
+    const signOut = vi.fn(() => new Promise<void>((resolve) => { releaseSignOut = resolve; }));
+    const service = makeService({
+      restore: vi.fn(async () => ({ ok: true as const, data: session })),
+      signOut,
+    });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+    runtime.openProfileEditor();
+
+    const first = runtime.logout();
+    const second = runtime.logout();
+
+    expect(runtime.profileEditorVisible).toBe(false);
+    expect(signOut).toHaveBeenCalledTimes(1);
+    releaseSignOut();
+    await Promise.all([first, second]);
+    expect(runtime.state).toEqual({ status: "guest", session: null, failure: null });
+  });
+
+  test("keeps authenticated profile errors visible without calling the cloud for an invalid draft", async () => {
+    const updateProfile = vi.fn(async () => ({ ok: true as const, data: session.user }));
+    const service = makeService({
+      restore: vi.fn(async () => ({ ok: true as const, data: session })),
+      updateProfile,
+    });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+
+    const saved = await runtime.saveProfile({ nickname: "豆".repeat(21), avatar: null });
+
+    expect(saved).toBe(false);
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(getIdentityPresentation(runtime.state).detail).toBe("资料格式不符合要求，请检查昵称或头像。");
+  });
+
+  test("closes the editor and exposes re-login copy when profile saving expires the session", async () => {
+    const service = makeService({
+      restore: vi.fn(async () => ({ ok: true as const, data: session })),
+      updateProfile: vi.fn(async () => ({ ok: false as const, error: { code: "SESSION_EXPIRED" as const } })),
+    });
+    const runtime = createIdentityRuntime(service);
+    await runtime.initialize();
+    runtime.openProfileEditor();
+
+    const saved = await runtime.saveProfile({ nickname: "Pindou", avatar: null });
+
+    expect(saved).toBe(false);
+    expect(runtime.profileEditorVisible).toBe(false);
+    expect(getIdentityPresentation(runtime.state).detail).toBe("登录状态已过期，请重新登录后继续。");
+  });
+
+  test("presents the approved default profile name and authenticated profile failure", () => {
+    expect(getIdentityPresentation({
+      status: "authenticated",
+      session: { user: { uid: "user-1" }, expiresAt: 2_000 },
+      failure: { code: "LOGIN_FAILED" },
+    })).toMatchObject({
+      title: "拼豆朋友",
+      detail: "资料保存未完成，请稍后重试。",
+      failure: "资料保存未完成，请稍后重试。",
+    });
+  });
+
+  test("presents the stable privacy statement for user-initiated identity and cloud actions", () => {
+    expect(getIdentityPresentation({ status: "guest", session: null, failure: null }).privacy).toBe(
+      "微信身份、资料设置与云作品操作均由你主动触发，不会上传你的原始创作照片。",
+    );
+  });
+
+  test.each([
+    ["PLATFORM_UNSUPPORTED", "当前平台暂不支持微信身份登录。"],
+    ["CLOUD_NOT_CONFIGURED", "云服务暂未配置，请稍后再试。"],
+    ["LOGIN_FAILED", "登录未完成，请重新尝试。"],
+  ] as const)("shares stable %s identity feedback with the Create page", (code, detail) => {
+    expect(getIdentityPresentation({
+      status: "error",
+      session: null,
+      failure: { code },
+    }).detail).toBe(detail);
+  });
+
+  test("uses shared recovery presentation for Create guest session expiry but keeps cancellation silent", () => {
+    expect(getCreateCloudPresentation({
+      status: "guest",
+      session: null,
+      failure: { code: "SESSION_EXPIRED" },
+    })).toEqual({
+      title: "拼豆朋友",
+      copy: "登录状态已过期，请重新登录后继续。",
+      action: "重新登录",
+      ready: false,
+    });
+    expect(getCreateCloudPresentation({
+      status: "guest",
+      session: null,
+      failure: { code: "USER_CANCELLED" },
+    })).toEqual({
+      title: "云作品功能尚未接入",
+      copy: "你可以主动确认身份后，在后续版本查看云作品。",
+      action: "确认身份后查看",
+      ready: false,
+    });
+  });
+
+  test("rejects an oversized avatar before reading its base64 data", async () => {
+    const calls: string[] = [];
+
+    await expect(readAvatarFile({
+      getFileInfo: async () => { calls.push("file-info"); return { size: 1_048_577 }; },
+      readFile: async () => { calls.push("read-file"); return "iVBORw0KGgo="; },
+      base64ToArrayBuffer: () => new ArrayBuffer(0),
+    }, "wxfile://avatar")).rejects.toThrow("INVALID_PROFILE");
+
+    expect(calls).toEqual(["file-info"]);
+  });
+});

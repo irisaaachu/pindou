@@ -3,6 +3,7 @@
   "isDefaultConfig": true,
   "tokenExpiresIn": 259200,
   "tokenExpiresThreshold": 86400,
+  "tokenSecret": "REPLACE_LOCALLY_STRONG_RANDOM_TOKEN_SECRET",
   "mp-weixin": {
     "oauth": {
       "weixin": {
