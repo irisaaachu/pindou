@@ -119,8 +119,7 @@ export function createUniCloudIdentityService(
       return loginGeneration === operationGeneration ? loginPromise : failure("LOGIN_FAILED");
     }
     const requestGeneration = operationGeneration;
-
-    const current = completeSignIn(requestGeneration);
+    const current = Promise.resolve().then(() => completeSignIn(requestGeneration));
     const tracked = current.finally(() => {
       if (loginPromise === tracked) {
         loginPromise = null;

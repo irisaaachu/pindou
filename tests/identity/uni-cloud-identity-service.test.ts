@@ -425,4 +425,30 @@ describe("uniCloud identity service", () => {
       data: { user: { uid: "new-user" }, expiresAt: 2_000 },
     });
   });
+
+  test("shares one flow when loginWeixin synchronously re-enters sign-in", async () => {
+    let markLoginWeixin!: () => void;
+    const loginWeixinCalled = new Promise<void>((resolve) => { markLoginWeixin = resolve; });
+    let reentrantSignIn!: Promise<unknown>;
+    const serviceRef: { current: ReturnType<typeof createUniCloudIdentityService> | null } = { current: null };
+    const dependencies = makeDependencies({
+      loginWeixin: vi.fn(() => {
+        markLoginWeixin();
+        reentrantSignIn = serviceRef.current!.signIn();
+        return Promise.resolve({ code: "one-code" });
+      }),
+    });
+    const service = createUniCloudIdentityService(dependencies);
+    serviceRef.current = service;
+
+    const initialSignIn = service.signIn();
+    await loginWeixinCalled;
+
+    await expect(Promise.all([initialSignIn, reentrantSignIn])).resolves.toEqual([
+      { ok: true, data: { user: { uid: "verified-user", nickname: "Pindou", avatarUrl: "avatar.png" }, expiresAt: 2_000 } },
+      { ok: true, data: { user: { uid: "verified-user", nickname: "Pindou", avatarUrl: "avatar.png" }, expiresAt: 2_000 } },
+    ]);
+    expect(dependencies.loginWeixin).toHaveBeenCalledTimes(1);
+    expect(dependencies.loginByWeixin).toHaveBeenCalledTimes(1);
+  });
 });
