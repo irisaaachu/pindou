@@ -32,10 +32,10 @@
         </view>
         <view class="empty-state">
           <text class="empty-state__mark">02</text>
-          <text class="empty-state__title">{{ cloudTitle }}</text>
-          <text class="section-copy">{{ cloudCopy }}</text>
-          <button class="cloud-action" :loading="identityRuntime.state.status === 'signing-in'" @tap="requestCloudWorks">
-            {{ cloudAction }}
+          <text class="empty-state__title">{{ cloudPresentation.title }}</text>
+          <text class="section-copy">{{ cloudPresentation.copy }}</text>
+          <button class="cloud-action" :loading="identityBusy" :disabled="identityBusy || cloudPresentation.ready" @tap="requestCloudWorks">
+            {{ cloudPresentation.action }}
           </button>
         </view>
       </view>
@@ -53,27 +53,16 @@
 import { computed } from "vue";
 
 import ConsentDialog from "../../components/identity/ConsentDialog.vue";
-import { getIdentityPresentation, identityRuntime } from "../../application/identity/runtime";
+import { getCreateCloudPresentation, identityRuntime } from "../../application/identity/runtime";
 
-const cloudReady = computed(() => identityRuntime.state.status === "authenticated");
-const identityPresentation = computed(() => getIdentityPresentation(identityRuntime.state));
-const cloudTitle = computed(() => cloudReady.value
-  ? "身份已就绪"
-  : identityRuntime.state.status === "error" ? identityPresentation.value.title : "云作品功能尚未接入",
-);
-const cloudCopy = computed(() => cloudReady.value
-  ? "身份已就绪，云作品将在后续版本开放"
-  : identityRuntime.state.status === "error"
-    ? identityPresentation.value.detail
-    : "你可以主动确认身份后，在后续版本查看云作品。",
-);
-const cloudAction = computed(() => cloudReady.value
-  ? "已完成身份确认"
-  : identityRuntime.state.status === "error" ? identityPresentation.value.action : "确认身份后查看",
+const cloudPresentation = computed(() => getCreateCloudPresentation(identityRuntime.state));
+const identityBusy = computed(() => identityRuntime.loggingOut
+  || identityRuntime.state.status === "restoring"
+  || identityRuntime.state.status === "signing-in",
 );
 
 function requestCloudWorks(): void {
-  if (cloudReady.value) return;
+  if (cloudPresentation.value.ready || identityBusy.value) return;
   void identityRuntime.requestAuthenticatedAccess();
 }
 </script>

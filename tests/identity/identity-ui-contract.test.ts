@@ -1,6 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { createIdentityRuntime, getIdentityPresentation } from "../../src/application/identity/runtime";
+import {
+  createIdentityRuntime,
+  getCreateCloudPresentation,
+  getIdentityPresentation,
+} from "../../src/application/identity/runtime";
 import { readAvatarFile } from "../../src/adapters/identity/platform";
 import type { IdentityService, IdentitySession, ProfileDraft } from "../../src/domain/identity";
 
@@ -230,6 +234,29 @@ describe("identity UI runtime", () => {
       session: null,
       failure: { code },
     }).detail).toBe(detail);
+  });
+
+  test("uses shared recovery presentation for Create guest session expiry but keeps cancellation silent", () => {
+    expect(getCreateCloudPresentation({
+      status: "guest",
+      session: null,
+      failure: { code: "SESSION_EXPIRED" },
+    })).toEqual({
+      title: "拼豆朋友",
+      copy: "登录状态已过期，请重新登录后继续。",
+      action: "重新登录",
+      ready: false,
+    });
+    expect(getCreateCloudPresentation({
+      status: "guest",
+      session: null,
+      failure: { code: "USER_CANCELLED" },
+    })).toEqual({
+      title: "云作品功能尚未接入",
+      copy: "你可以主动确认身份后，在后续版本查看云作品。",
+      action: "确认身份后查看",
+      ready: false,
+    });
   });
 
   test("rejects an oversized avatar before reading its base64 data", async () => {

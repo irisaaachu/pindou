@@ -207,6 +207,47 @@ describe("uniCloud identity service", () => {
     expect(result).toEqual({ ok: false, error: { code: "INVALID_PROFILE" } });
   });
 
+  test.each([
+    ["IDENTITY_REQUIRED", "SESSION_EXPIRED", false],
+    ["INTERNAL_ERROR", "INTERNAL_ERROR", true],
+    ["INVALID_REQUEST", "INTERNAL_ERROR", true],
+  ] as const)("classifies resolved getProfile %s envelopes without leaking or over-clearing", async (cloudCode, expectedCode, preservesStorage) => {
+    const dependencies = makeDependencies({
+      getProfile: vi.fn(async () => ({ ok: false, error: { code: cloudCode } })),
+    });
+    dependencies.storage.set("uni_id_token", "sdk-token");
+    dependencies.storage.set("uni_id_token_expired", 2_000);
+    dependencies.storage.set("pindou_identity_snapshot_v1", { uid: "verified-user" });
+
+    const result = await createUniCloudIdentityService(dependencies).signIn();
+
+    expect(result).toEqual({ ok: false, error: { code: expectedCode } });
+    expect(dependencies.storage.has("uni_id_token")).toBe(preservesStorage);
+    expect(dependencies.storage.has("uni_id_token_expired")).toBe(preservesStorage);
+    expect(dependencies.storage.has("pindou_identity_snapshot_v1")).toBe(preservesStorage);
+  });
+
+  test.each([
+    ["IDENTITY_REQUIRED", "SESSION_EXPIRED", false],
+    ["INVALID_PROFILE", "INVALID_PROFILE", true],
+    ["INTERNAL_ERROR", "INTERNAL_ERROR", true],
+    ["INVALID_REQUEST", "INTERNAL_ERROR", true],
+  ] as const)("classifies resolved updateProfile %s envelopes without clearing valid storage", async (cloudCode, expectedCode, preservesStorage) => {
+    const dependencies = makeDependencies({
+      updateProfile: vi.fn(async () => ({ ok: false, error: { code: cloudCode } })),
+    });
+    dependencies.storage.set("uni_id_token", "sdk-token");
+    dependencies.storage.set("uni_id_token_expired", 2_000);
+    dependencies.storage.set("pindou_identity_snapshot_v1", { uid: "verified-user" });
+
+    const result = await createUniCloudIdentityService(dependencies).updateProfile({ nickname: "Pindou", avatar: null });
+
+    expect(result).toEqual({ ok: false, error: { code: expectedCode } });
+    expect(dependencies.storage.has("uni_id_token")).toBe(preservesStorage);
+    expect(dependencies.storage.has("uni_id_token_expired")).toBe(preservesStorage);
+    expect(dependencies.storage.has("pindou_identity_snapshot_v1")).toBe(preservesStorage);
+  });
+
   test.each(["code", "errCode"] as const)("maps rejected cloud %s IDENTITY_REQUIRED to session expiry without retaining the message", async (field) => {
     const removed: string[] = [];
     const dependencies = makeDependencies({

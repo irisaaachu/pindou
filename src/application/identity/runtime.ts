@@ -13,13 +13,14 @@ import type {
 } from "../../domain/identity";
 import { createIdentityController, type IdentityController } from "./controller";
 
-export { getIdentityPresentation } from "./presentation";
+export { getCreateCloudPresentation, getIdentityPresentation } from "./presentation";
 
 export type IdentityRuntime = {
   state: IdentityState;
   consentVisible: boolean;
   profileEditorVisible: boolean;
   profileSaving: boolean;
+  loggingOut: boolean;
   profileEditingSupported: boolean;
   initialize(): Promise<IdentityResult<IdentitySession | null>>;
   requestAuthenticatedAccess(): Promise<IdentityResult<IdentitySession> | null>;
@@ -43,13 +44,14 @@ export function createIdentityRuntime(
     consentVisible: false,
     profileEditorVisible: false,
     profileSaving: false,
+    loggingOut: false,
     profileEditingSupported,
     initialize: () => controller.initialize(),
     async requestAuthenticatedAccess() {
       if (state.status === "authenticated" && state.session) {
         return { ok: true, data: state.session };
       }
-      if (state.status === "restoring" || state.status === "signing-in") return null;
+      if (runtime.loggingOut || state.status === "restoring" || state.status === "signing-in") return null;
       runtime.consentVisible = true;
       return null;
     },
@@ -86,9 +88,13 @@ export function createIdentityRuntime(
       if (!logoutPromise) {
         runtime.consentVisible = false;
         runtime.profileEditorVisible = false;
+        runtime.loggingOut = true;
         const pending = controller.logout().then(() => undefined);
         const tracked = pending.finally(() => {
-          if (logoutPromise === tracked) logoutPromise = null;
+          if (logoutPromise === tracked) {
+            logoutPromise = null;
+            runtime.loggingOut = false;
+          }
         });
         logoutPromise = tracked;
       }

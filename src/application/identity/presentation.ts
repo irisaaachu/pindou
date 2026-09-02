@@ -8,6 +8,13 @@ export type IdentityPresentation = {
   failure: string | null;
 };
 
+export type CreateCloudPresentation = {
+  title: string;
+  copy: string;
+  action: string;
+  ready: boolean;
+};
+
 export function getIdentityPresentation(state: IdentityState): IdentityPresentation {
   const privacy = "微信身份、资料设置与云作品操作均由你主动触发，不会上传你的原始创作照片。";
 
@@ -59,4 +66,27 @@ function identityErrorCopy(code: IdentityFailureCode | undefined): string {
   if (code === "PLATFORM_UNSUPPORTED") return "当前平台暂不支持微信身份登录。";
   if (code === "CLOUD_NOT_CONFIGURED") return "云服务暂未配置，请稍后再试。";
   return "登录未完成，请重新尝试。";
+}
+
+export function getCreateCloudPresentation(state: IdentityState): CreateCloudPresentation {
+  if (state.status === "authenticated" && state.session) {
+    return {
+      title: "身份已就绪",
+      copy: "身份已就绪，云作品将在后续版本开放",
+      action: "已完成身份确认",
+      ready: true,
+    };
+  }
+
+  if (state.failure && state.failure.code !== "USER_CANCELLED") {
+    const presentation = getIdentityPresentation(state);
+    return { title: presentation.title, copy: presentation.detail, action: presentation.action, ready: false };
+  }
+
+  return {
+    title: "云作品功能尚未接入",
+    copy: "你可以主动确认身份后，在后续版本查看云作品。",
+    action: "确认身份后查看",
+    ready: false,
+  };
 }

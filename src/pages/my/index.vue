@@ -9,7 +9,7 @@
         <text class="section-copy">{{ presentation.detail }}</text>
       </view>
       <text class="soft-badge">{{ identityLabel }}</text>
-      <button v-if="identityRuntime.state.status === 'authenticated'" class="profile-card__logout" @tap.stop="logout">
+      <button v-if="identityRuntime.state.status === 'authenticated'" class="profile-card__logout" :disabled="identityRuntime.loggingOut" @tap.stop="logout">
         退出登录
       </button>
     </view>
@@ -81,6 +81,7 @@ const identityLabel = computed(() => {
 });
 
 function handleProfileAction(): void {
+  if (identityRuntime.loggingOut || identityRuntime.state.status === "restoring" || identityRuntime.state.status === "signing-in") return;
   if (identityRuntime.state.status === "authenticated") {
     identityRuntime.openProfileEditor();
     return;

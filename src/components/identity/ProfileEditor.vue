@@ -14,7 +14,7 @@
       <!-- #endif -->
       <view v-if="!supported" class="profile-editor__unsupported">
         <view class="profile-editor__default-avatar">{{ avatarLetter }}</view>
-        <text class="profile-editor__default-name">{{ user?.nickname || "Pindou 创作者" }}</text>
+        <text class="profile-editor__default-name">{{ user?.nickname || "拼豆朋友" }}</text>
         <text class="section-copy">当前平台暂不支持微信头像与昵称设置。</text>
       </view>
       <text v-if="failure" class="profile-editor__failure">{{ failure }}</text>
