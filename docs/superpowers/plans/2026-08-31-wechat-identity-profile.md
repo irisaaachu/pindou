@@ -422,7 +422,7 @@ Run: `npm run check && npm run build:h5`
 
 Expected: 0 test failures; lint, type check, cloud validation, WeChat build and H5 build all exit `0`.
 
-- [ ] **Step 9: Review, commit, tag and push**
+- [x] **Step 9: Review, commit, tag and push**
 
 Run `git diff --check`, inspect every staged file, scan for secrets and confirm `.superpowers/` is not staged.
 
