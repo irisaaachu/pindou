@@ -1,10 +1,18 @@
 import type {
   DiyScalePercent,
-  PaletteReference,
   PindouProjectV1,
   ProjectCell,
   ProjectSourceV1,
 } from "../project";
+import type {
+  GalleryCategory,
+  GalleryListQuery,
+  GalleryPage,
+  GalleryPatternDetail,
+  GalleryPatternSummary,
+  GalleryPayloadDescriptor,
+  GalleryResult,
+} from "../gallery";
 
 export interface ProjectSummary {
   id: string;
@@ -27,21 +35,14 @@ export interface ContentCategory {
   order: number;
 }
 
-export interface GalleryPatternRecord {
-  id: string;
-  version: string;
-  name: string;
-  categoryId: string;
-  width: number;
-  height: number;
-  palette: PaletteReference;
-  cells: ProjectCell[];
+export interface GalleryRepository {
+  listCategories(): Promise<GalleryResult<GalleryCategory[]>>;
+  listPatterns(query: GalleryListQuery): Promise<GalleryResult<GalleryPage<GalleryPatternSummary>>>;
+  getPattern(id: string): Promise<GalleryResult<GalleryPatternDetail | null>>;
 }
 
-export interface GalleryRepository {
-  listCategories(): Promise<ContentCategory[]>;
-  listPatterns(categoryId: string): Promise<GalleryPatternRecord[]>;
-  getPattern(id: string, version: string): Promise<GalleryPatternRecord | null>;
+export interface GalleryPayloadSource {
+  download(descriptor: GalleryPayloadDescriptor): Promise<GalleryResult<string>>;
 }
 
 export interface DiyElementRecord {

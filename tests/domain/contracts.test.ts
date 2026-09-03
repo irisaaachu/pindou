@@ -3,9 +3,18 @@ import { describe, expect, test } from "vitest";
 import type {
   ExportArtifact,
   ExportOptions,
+  GalleryCategory,
+  GalleryListQuery,
+  GalleryPage,
+  GalleryPatternDetail,
+  GalleryPatternSummary,
+  GalleryPayloadDescriptor,
+  GalleryResult,
   GenerationEngine,
   GenerationRequest,
   GenerationResult,
+  GalleryPayloadSource,
+  GalleryRepository,
   ProjectExporter,
   ProjectRepository,
   ProjectSummary,
@@ -62,6 +71,33 @@ class SvgProjectExporter implements ProjectExporter {
   }
 }
 
+class SummaryOnlyGalleryRepository implements GalleryRepository {
+  async listCategories(): Promise<GalleryResult<GalleryCategory[]>> {
+    return { ok: true, data: [] };
+  }
+
+  async listPatterns(
+    _query: GalleryListQuery,
+  ): Promise<GalleryResult<GalleryPage<GalleryPatternSummary>>> {
+    void _query;
+    return { ok: true, data: { items: [] } };
+  }
+
+  async getPattern(_id: string): Promise<GalleryResult<GalleryPatternDetail | null>> {
+    void _id;
+    return { ok: true, data: null };
+  }
+}
+
+class JsonGalleryPayloadSource implements GalleryPayloadSource {
+  async download(
+    _descriptor: GalleryPayloadDescriptor,
+  ): Promise<GalleryResult<string>> {
+    void _descriptor;
+    return { ok: true, data: "{}" };
+  }
+}
+
 describe("domain module contracts", () => {
   test("supports a project repository lifecycle", async () => {
     const repository: ProjectRepository = new MemoryProjectRepository();
@@ -113,6 +149,20 @@ describe("domain module contracts", () => {
       mediaType: "image/svg+xml",
       data: '<svg data-direction="reverse"></svg>',
     });
+  });
+
+  test("lists paginated gallery summaries instead of cell records", async () => {
+    const repository: GalleryRepository = new SummaryOnlyGalleryRepository();
+    const source: GalleryPayloadSource = new JsonGalleryPayloadSource();
+    const result = await repository.listPatterns({ order: "featured", limit: 24 });
+
+    expect(result).toEqual({ ok: true, data: { items: [] } });
+    expect(await source.download({
+      fileRef: "gallery/flower.json",
+      formatVersion: 1,
+      byteSize: 2,
+      sha256: "a".repeat(64),
+    })).toEqual({ ok: true, data: "{}" });
   });
 });
 
