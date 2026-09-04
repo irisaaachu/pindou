@@ -23,6 +23,11 @@ const requiredProfileFiles = [
   "uniCloud-aliyun/cloudfunctions/pindou-profile/package.json",
   "uniCloud-aliyun/cloudfunctions/pindou-profile/profile-core.js",
 ];
+const requiredGalleryFiles = [
+  "uniCloud-aliyun/cloudfunctions/pindou-gallery/gallery-core.js",
+  "uniCloud-aliyun/cloudfunctions/pindou-gallery/index.obj.js",
+  "uniCloud-aliyun/cloudfunctions/pindou-gallery/package.json",
+];
 const realConfigPath =
   "uniCloud-aliyun/cloudfunctions/common/uni-config-center/uni-id/config.json";
 
@@ -69,6 +74,26 @@ for (const path of requiredProfileFiles) {
   if (!(await exists(path))) issues.push(`Missing Pindou profile file: ${path}`);
 }
 
+for (const path of requiredGalleryFiles) {
+  if (!(await exists(path))) issues.push(`Missing Pindou gallery file: ${path}`);
+}
+
+const galleryPackagePath = "uniCloud-aliyun/cloudfunctions/pindou-gallery/package.json";
+if (await exists(galleryPackagePath)) {
+  const galleryPackage = JSON.parse(await readFile(resolve(process.cwd(), galleryPackagePath), "utf8"));
+  if (galleryPackage.dependencies?.["pindou-cloud-common"] !== "file:../common/pindou-cloud-common") {
+    issues.push(`Pindou gallery must depend on pindou-cloud-common via file:../common/pindou-cloud-common`);
+  }
+}
+
+const galleryObjectPath = "uniCloud-aliyun/cloudfunctions/pindou-gallery/index.obj.js";
+if (await exists(galleryObjectPath)) {
+  const galleryObject = await readFile(resolve(process.cwd(), galleryObjectPath), "utf8");
+  if (/\b(?:create|update|delete|import)\s*\(/u.test(galleryObject)) {
+    issues.push("Pindou gallery must not expose client-callable write methods");
+  }
+}
+
 const gitignore = (await readFile(resolve(process.cwd(), ".gitignore"), "utf8"))
   .split(/\r?\n/)
   .map((line) => line.trim());
@@ -80,6 +105,6 @@ if (issues.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Validated ${EXPECTED_COLLECTIONS.length} Pindou schemas, ${officialPackages.length} official packages and ${requiredProfileFiles.length} profile files.`,
+    `Validated ${EXPECTED_COLLECTIONS.length} Pindou schemas, ${officialPackages.length} official packages, ${requiredProfileFiles.length} profile files and ${requiredGalleryFiles.length} gallery files.`,
   );
 }

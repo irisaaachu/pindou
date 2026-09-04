@@ -1,0 +1,9 @@
+{
+  "name": "pindou-gallery",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.obj.js",
+  "dependencies": {
+    "pindou-cloud-common": "file:../common/pindou-cloud-common"
+  }
+}

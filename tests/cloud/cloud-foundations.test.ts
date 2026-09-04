@@ -17,6 +17,17 @@ const provenanceFields = [
 ];
 
 describe("validateFoundationSchemas", () => {
+  test("includes a read-only gallery cloud object with its shared dependency", () => {
+    const directory = "uniCloud-aliyun/cloudfunctions/pindou-gallery";
+    for (const file of ["gallery-core.js", "index.obj.js", "package.json"]) {
+      expect(existsSync(`${directory}/${file}`)).toBe(true);
+    }
+    const packageJson = JSON.parse(readFileSync(`${directory}/package.json`, "utf8"));
+    expect(packageJson.dependencies).toMatchObject({
+      "pindou-cloud-common": "file:../common/pindou-cloud-common",
+    });
+  });
+
   test("accepts the complete secure foundation", () => {
     expect(validateFoundationSchemas(validSchemas())).toEqual([]);
   });
@@ -116,3 +127,4 @@ interface FoundationSchema {
   required: string[];
   properties: Record<string, { bsonType?: string }>;
 }
+import { existsSync, readFileSync } from "node:fs";
