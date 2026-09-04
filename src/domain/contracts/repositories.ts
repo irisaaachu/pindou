@@ -42,7 +42,21 @@ export interface GalleryRepository {
 }
 
 export interface GalleryPayloadSource {
-  download(descriptor: GalleryPayloadDescriptor): Promise<GalleryResult<string>>;
+  download(
+    descriptor: GalleryPayloadDescriptor,
+    identity?: GalleryPayloadIdentity,
+  ): Promise<GalleryResult<string>>;
+}
+
+export interface GalleryPayloadIdentity {
+  id: string;
+  version: string;
+}
+
+export interface GalleryPayloadCache {
+  get(key: string): Promise<string | null>;
+  put(key: string, text: string, maximumByteSize?: number): Promise<void>;
+  remove(key: string): Promise<void>;
 }
 
 export interface DiyElementRecord {
