@@ -1,8 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { createGalleryController } from "../../src/application/gallery";
+import { createGalleryController, createGalleryRuntime } from "../../src/application/gallery";
 import type { GalleryRepository, ProjectRepository } from "../../src/domain/contracts";
-import { sha256Utf8, type GalleryPatternDetail, type GalleryPatternPayloadV1 } from "../../src/domain/gallery";
+import { sha256Utf8, type GalleryPatternDetail, type GalleryPatternPayloadV1, type GalleryResult } from "../../src/domain/gallery";
 
 const summary = {
   id: "tiny-heart", version: "1.0.0", name: "Tiny Heart", coverRef: "cover.png", width: 2, height: 2,
@@ -148,5 +148,47 @@ describe("gallery controller", () => {
     await expect(first).resolves.toEqual(expect.objectContaining({ ok: true }));
     expect(download).toHaveBeenCalledTimes(1);
     expect(projects.save).toHaveBeenCalledTimes(1);
+  });
+
+  test("keeps a copied project in the explicit runtime handoff only after use", async () => {
+    const { repository, projects, download } = controller();
+    const value = createGalleryRuntime({
+      controllerDependencies: {
+        repository,
+        payloadSource: { download },
+        projects,
+        copyDependencies: { createId: () => "local-project", nowIso: () => "2026-09-04T00:00:00.000Z" },
+      },
+    });
+
+    expect(value.handoff.project).toBeNull();
+    await value.controller.loadDetail("tiny-heart");
+    expect(value.handoff.project).toBeNull();
+    expect(projects.save).not.toHaveBeenCalled();
+
+    await expect(value.useCurrentDetail()).resolves.toEqual(expect.objectContaining({ ok: true }));
+    expect(value.handoff.project).toEqual(expect.objectContaining({ id: "local-project" }));
+  });
+
+  test.each([
+    ["download failure", { ok: false, error: { code: "NETWORK_ERROR" } }],
+    ["integrity failure", { ok: false, error: { code: "PAYLOAD_INTEGRITY_FAILED" } }],
+    ["invalid JSON", { ok: true, data: "not-json" }],
+    ["copy mismatch", { ok: true, data: JSON.stringify({ ...payload, contentId: "other" }) }],
+  ] as Array<[string, GalleryResult<string>]>)('keeps no handoff or saved project after %s', async (_name, downloadResult) => {
+    const base = controller();
+    const value = createGalleryRuntime({
+      controllerDependencies: {
+        repository: base.repository,
+        payloadSource: { download: async () => downloadResult },
+        projects: base.projects,
+        copyDependencies: { createId: () => "must-not-save", nowIso: () => "2026-09-04T00:00:00.000Z" },
+      },
+    });
+
+    await value.controller.loadDetail("tiny-heart");
+    await expect(value.useCurrentDetail()).resolves.toEqual(expect.objectContaining({ ok: false }));
+    expect(base.projects.save).not.toHaveBeenCalled();
+    expect(value.handoff.project).toBeNull();
   });
 });

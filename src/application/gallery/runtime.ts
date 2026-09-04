@@ -13,14 +13,21 @@ import {
   type GalleryController,
   type GalleryControllerState,
 } from "./controller";
+import type { PindouProjectV1 } from "../../domain/project";
 
 export interface GalleryRuntimeDependencies {
   controllerDependencies: Parameters<typeof createGalleryController>[0];
 }
 
+export interface GalleryRuntimeHandoff {
+  project: PindouProjectV1 | null;
+}
+
 export interface GalleryRuntime {
   state: GalleryControllerState;
   controller: GalleryController;
+  handoff: GalleryRuntimeHandoff;
+  useCurrentDetail(): ReturnType<GalleryController["useCurrentDetail"]>;
 }
 
 export function createGalleryRuntime(dependencies: GalleryRuntimeDependencies): GalleryRuntime {
@@ -29,7 +36,16 @@ export function createGalleryRuntime(dependencies: GalleryRuntimeDependencies): 
     detail: { status: "idle" },
     categories: { status: "idle" },
   });
-  return { state, controller: createGalleryController(dependencies.controllerDependencies, state) };
+  const controller = createGalleryController(dependencies.controllerDependencies, state);
+  const handoff: GalleryRuntimeHandoff = reactive({ project: null });
+
+  async function useCurrentDetail(): ReturnType<GalleryController["useCurrentDetail"]> {
+    const result = await controller.useCurrentDetail();
+    if (result.ok) handoff.project = result.data;
+    return result;
+  }
+
+  return { state, controller, handoff, useCurrentDetail };
 }
 
 function defaultCopyDependencies(): GalleryCopyDependencies {

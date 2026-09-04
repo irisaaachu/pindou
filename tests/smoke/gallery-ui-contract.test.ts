@@ -77,4 +77,32 @@ describe("gallery discovery UI contract", () => {
     expect(filters).toContain('emit("apply"');
     expect(filters).toContain('emit("clear"');
   });
+
+  it("presents pattern details and a truthful local-copy boundary", () => {
+    const detail = readSource("src/pages/gallery/detail.vue");
+
+    expect(detail).toContain("decodeURIComponent");
+    expect(detail).toContain("previewFailed");
+    expect(detail).toContain("physicalWidthMm");
+    expect(detail).toContain("detail.name");
+    expect(detail).toContain("detail.tags");
+    expect(detail).toContain("detail.width");
+    expect(detail).toContain("detail.difficulty");
+    expect(detail).toContain("detail.colorCount");
+    expect(detail).toContain("detail.beadCount");
+    expect(detail).toContain("detail.palette");
+    expect(detail).toContain("formatDirection");
+    expect(detail).toContain("detail.creator");
+    expect(detail).toContain("formatSource");
+    expect(detail).toContain("可编辑文字");
+    expect(detail).toContain("not-found");
+    expect(detail).toContain("unsupported");
+    expect(detail).toContain("usePending");
+    expect(detail).toContain(":disabled=\"usePending\"");
+    expect(detail).toContain("returnToGallery");
+    expect(detail).toContain("图纸副本已准备好；完整编辑器将在后续版本开放");
+    expect(detail).toContain("galleryRuntime.useCurrentDetail");
+    expect(detail).toContain("retryDetail");
+    expect(detail).not.toMatch(/identity|uniCloud|fileRef|sha256|payload/i);
+  });
 });
