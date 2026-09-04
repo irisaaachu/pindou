@@ -3,6 +3,7 @@ import {
   createProjectFromGallery,
   validateGalleryPayload,
   type GalleryCopyDependencies,
+  type GalleryCategory,
   type GalleryErrorCode,
   type GalleryListQuery,
   type GalleryPatternDetail,
@@ -32,9 +33,16 @@ export type GalleryDetailState =
   | { status: "failure"; id: string; error: { code: GalleryErrorCode } }
   | { status: "unsupported"; id: string };
 
+export type GalleryCategoriesState =
+  | { status: "idle" }
+  | { status: "loading"; items: GalleryCategory[] }
+  | { status: "ready"; items: GalleryCategory[] }
+  | { status: "failure"; items: GalleryCategory[] };
+
 export interface GalleryControllerState {
   list: GalleryListState;
   detail: GalleryDetailState;
+  categories: GalleryCategoriesState;
 }
 
 export interface GalleryControllerDependencies {
@@ -48,6 +56,8 @@ export interface GalleryController {
   readonly state: GalleryControllerState;
   readonly list: GalleryListState;
   readonly detail: GalleryDetailState;
+  readonly categories: GalleryCategoriesState;
+  loadCategories(): Promise<void>;
   refresh(query: GalleryListQuery): Promise<void>;
   loadNextPage(): Promise<void>;
   retryList(): Promise<void>;
@@ -58,7 +68,7 @@ export interface GalleryController {
 
 export function createGalleryController(
   dependencies: GalleryControllerDependencies,
-  state: GalleryControllerState = { list: { status: "idle" }, detail: { status: "idle" } },
+  state: GalleryControllerState = { list: { status: "idle" }, detail: { status: "idle" }, categories: { status: "idle" } },
 ): GalleryController {
   let listGeneration = 0;
   let detailGeneration = 0;
@@ -99,6 +109,15 @@ export function createGalleryController(
 
   async function refresh(query: GalleryListQuery): Promise<void> {
     await requestList(normalizeQuery(query));
+  }
+
+  async function loadCategories(): Promise<void> {
+    const previous = state.categories.status === "ready" ? state.categories.items : [];
+    state.categories = { status: "loading", items: [...previous] };
+    const result = await dependencies.repository.listCategories();
+    state.categories = result.ok
+      ? { status: "ready", items: [...result.data] }
+      : { status: "failure", items: [...previous] };
   }
 
   async function loadNextPage(): Promise<void> {
@@ -171,6 +190,8 @@ export function createGalleryController(
     state,
     get list() { return state.list; },
     get detail() { return state.detail; },
+    get categories() { return state.categories; },
+    loadCategories,
     refresh,
     loadNextPage,
     retryList,

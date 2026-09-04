@@ -1,7 +1,9 @@
 <script setup lang="ts">
+/* global uni */
 type EntryTone = "blush" | "lavender" | "mint";
 
 type CreationEntry = {
+  id: "photo" | "gallery" | "diy";
   title: string;
   description: string;
   label: string;
@@ -11,6 +13,7 @@ type CreationEntry = {
 
 const creationEntries: CreationEntry[] = [
   {
+    id: "photo",
     title: "照片生成器",
     description: "拍照或选择相册图片，快速预览清晰的拼豆图纸。",
     label: "上传即生成",
@@ -18,6 +21,7 @@ const creationEntries: CreationEntry[] = [
     tone: "blush",
   },
   {
+    id: "gallery",
     title: "拼豆图纸图库",
     description: "从门牌、生日、节日等使用场景中寻找灵感。",
     label: "按场景浏览",
@@ -25,6 +29,7 @@ const creationEntries: CreationEntry[] = [
     tone: "lavender",
   },
   {
+    id: "diy",
     title: "DIY 图纸",
     description: "组合边框、原创角色、装饰元素和文字。",
     label: "自由组合",
@@ -32,6 +37,10 @@ const creationEntries: CreationEntry[] = [
     tone: "mint",
   },
 ];
+
+function openEntry(entry: CreationEntry): void {
+  if (entry.id === "gallery") uni.navigateTo({ url: "/pages/gallery/index" });
+}
 </script>
 
 <template>
@@ -59,7 +68,7 @@ const creationEntries: CreationEntry[] = [
         <text class="eyebrow">Create your way</text>
         <text class="section-title">从哪里开始？</text>
       </view>
-      <text class="section-heading__note">三个入口将按 Milestone 逐步接入</text>
+      <text class="section-heading__note">图库已开放，其他入口将按 Milestone 逐步接入</text>
     </view>
 
     <view class="entry-grid">
@@ -67,6 +76,7 @@ const creationEntries: CreationEntry[] = [
         v-for="entry in creationEntries"
         :key="entry.title"
         :class="['entry-card', `entry-card--${entry.tone}`]"
+        @tap="openEntry(entry)"
       >
         <view class="entry-card__topline">
           <text class="entry-card__mark">{{ entry.mark }}</text>
@@ -76,7 +86,7 @@ const creationEntries: CreationEntry[] = [
           <text class="entry-card__title">{{ entry.title }}</text>
           <text class="entry-card__copy">{{ entry.description }}</text>
         </view>
-        <text class="entry-card__status">功能建设中</text>
+        <text class="entry-card__status">{{ entry.id === "gallery" ? "进入图库" : "功能建设中" }}</text>
       </view>
     </view>
 

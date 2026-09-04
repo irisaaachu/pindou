@@ -24,7 +24,11 @@ export interface GalleryRuntime {
 }
 
 export function createGalleryRuntime(dependencies: GalleryRuntimeDependencies): GalleryRuntime {
-  const state = reactive<GalleryControllerState>({ list: { status: "idle" }, detail: { status: "idle" } });
+  const state = reactive<GalleryControllerState>({
+    list: { status: "idle" },
+    detail: { status: "idle" },
+    categories: { status: "idle" },
+  });
   return { state, controller: createGalleryController(dependencies.controllerDependencies, state) };
 }
 

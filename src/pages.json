@@ -11,6 +11,14 @@
     {
       "path": "pages/my/index",
       "style": { "navigationBarTitleText": "我的" }
+    },
+    {
+      "path": "pages/gallery/index",
+      "style": { "navigationBarTitleText": "拼豆图纸图库" }
+    },
+    {
+      "path": "pages/gallery/detail",
+      "style": { "navigationBarTitleText": "图纸详情" }
     }
   ],
   "globalStyle": {
