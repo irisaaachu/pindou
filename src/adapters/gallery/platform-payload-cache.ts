@@ -100,3 +100,7 @@ export function createUniWeChatPayloadCache(
 ): GalleryPayloadCache {
   return createWeChatPayloadCache(runtime.getFileSystemManager(), environment.env.USER_DATA_PATH);
 }
+
+export function createUniPayloadCache(): GalleryPayloadCache {
+  return typeof wx === "undefined" ? createUniH5PayloadCache() : createUniWeChatPayloadCache();
+}
