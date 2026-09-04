@@ -30,3 +30,17 @@ HBuilderX 只用于账号关联和云端上传；日常业务代码仍可在当�
 2. 真实部署以 HBuilderX 或 uniCloud 控制台中每个 DB Schema、common 模块和云对象显示“上传成功”为验收依据。
 
 GitHub 中出现这些文件，只能证明云基础层已准备；在用户登录 DCloud、关联服务空间并完成上传之前，小程序不会自动获得云服务。
+
+## 四、Milestone 6：拼豆图纸图库部署
+
+在已经关联好的阿里云版 uniCloud 服务空间中，严格按以下顺序更新：
+
+1. 保留本机已忽略的真实 `uniCloud-aliyun/cloudfunctions/common/uni-config-center/uni-id/config.json`，不要删除、覆盖或加入 Git。
+2. 上传本次变更的两个 DB Schema：`pindou-gallery-categories.schema.json` 和 `pindou-gallery-patterns.schema.json`。
+3. 上传云对象 `pindou-gallery`。
+4. 在项目根目录本地运行 `npm run build:gallery-import`，生成确定性的图库导入文件。
+5. 通过 uniCloud 控制台或 HBuilderX 支持的数据导入流程，把 `generated/gallery-import/categories.json` 导入 `pindou-gallery-categories`，再把 `generated/gallery-import/patterns.json` 导入 `pindou-gallery-patterns`。
+6. 在云端数据库中确认 Milestone 6 恰好有 8 个分类、0 个正式图纸。0 个正式图纸是本阶段的预期结果，不是部署失败。
+7. 在 HBuilderX 中连接云端云函数环境并运行微信小程序，确认未登录用户可以直接看到图库空状态，且浏览过程不会弹出登录授权。
+
+Milestone 7 将补充预览图、图纸载荷资源以及 24 条正式图纸记录；在此之前不要用临时或无来源记录填充正式图库。
