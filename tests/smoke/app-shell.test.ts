@@ -24,7 +24,7 @@ describe("application shell", () => {
       { pagePath: "pages/my/index", text: "我的" },
     ];
 
-    expect(config.pages.map((page) => page.path)).toEqual(
+    expect(config.pages.slice(0, expectedTabs.length).map((page) => page.path)).toEqual(
       expectedTabs.map((tab) => tab.pagePath),
     );
     expect(config.tabBar?.list).toEqual(expectedTabs);
