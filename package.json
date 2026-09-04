@@ -37,8 +37,10 @@
     "test": "vitest run --config vitest.config.mts",
     "lint": "eslint . --ext .ts,.vue",
     "type-check": "vue-tsc --noEmit",
+    "validate:gallery": "node scripts/gallery/validate-gallery.mjs",
+    "build:gallery-import": "node scripts/gallery/build-gallery-import.mjs",
     "check:cloud": "node scripts/cloud/validate-foundations.mjs",
-    "check": "npm run test && npm run lint && npm run type-check && npm run check:cloud && npm run build:mp-weixin"
+    "check": "npm run test && npm run lint && npm run type-check && npm run validate:gallery && npm run check:cloud && npm run build:mp-weixin"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5020420260813003",

@@ -12,6 +12,7 @@ node_modules
 .worktrees/
 .DS_Store
 dist
+generated/gallery-import/*.json
 *.local
 uniCloud-aliyun/cloudfunctions/common/uni-config-center/uni-id/config.json
 

@@ -1,0 +1,41 @@
+{
+  "catalogVersion": 1,
+  "categories": [],
+  "patterns": [
+    {
+      "id": "tiny-heart",
+      "version": "1.0.0",
+      "name": "Tiny Heart",
+      "usageTags": ["gift"],
+      "themeTags": ["love"],
+      "featureTags": ["editable-text"],
+      "difficulty": "beginner",
+      "sizeClass": "small",
+      "coverRef": "covers/tiny-heart.png",
+      "previewRef": "previews/tiny-heart.png",
+      "payload": {
+        "fileRef": "payloads/tiny-heart-v1.json",
+        "formatVersion": 1,
+        "byteSize": 1,
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "width": 2,
+      "height": 2,
+      "physicalWidthMm": 5,
+      "physicalHeightMm": 5,
+      "palette": { "id": "pindou-basic", "version": "1.0.0" },
+      "direction": "normal",
+      "colorCount": 1,
+      "beadCount": 3,
+      "recommendationWeight": 1,
+      "publishedAt": "2026-09-03T00:00:00.000Z",
+      "creator": "Pindou Studio",
+      "sourceType": "original",
+      "licenseStatus": "approved",
+      "reviewStatus": "approved",
+      "acquiredAt": "2026-09-03T00:00:00.000Z",
+      "publishStatus": "published",
+      "order": 10
+    }
+  ]
+}

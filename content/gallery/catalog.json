@@ -1,0 +1,14 @@
+{
+  "catalogVersion": 1,
+  "categories": [
+    { "id": "usage-door-sign", "version": "1.0.0", "slug": "door-sign", "name": "门牌", "shortLabel": "门牌", "quickEntry": true, "creator": "Pindou Studio", "sourceType": "original", "licenseStatus": "approved", "reviewStatus": "approved", "acquiredAt": "2026-09-03T00:00:00.000Z", "publishStatus": "published", "order": 10 },
+    { "id": "usage-delivery-sign", "version": "1.0.0", "slug": "delivery-sign", "name": "快递门牌", "shortLabel": "快递", "quickEntry": false, "creator": "Pindou Studio", "sourceType": "original", "licenseStatus": "approved", "reviewStatus": "approved", "acquiredAt": "2026-09-03T00:00:00.000Z", "publishStatus": "published", "order": 20 },
+    { "id": "usage-birthday", "version": "1.0.0", "slug": "birthday", "name": "生日", "shortLabel": "生日", "quickEntry": true, "creator": "Pindou Studio", "sourceType": "original", "licenseStatus": "approved", "reviewStatus": "approved", "acquiredAt": "2026-09-03T00:00:00.000Z", "publishStatus": "published", "order": 30 },
+    { "id": "usage-holiday", "version": "1.0.0", "slug": "holiday", "name": "节日", "shortLabel": "节日", "quickEntry": true, "creator": "Pindou Studio", "sourceType": "original", "licenseStatus": "approved", "reviewStatus": "approved", "acquiredAt": "2026-09-03T00:00:00.000Z", "publishStatus": "published", "order": 40 },
+    { "id": "usage-farewell", "version": "1.0.0", "slug": "farewell", "name": "离职告别", "shortLabel": "告别", "quickEntry": false, "creator": "Pindou Studio", "sourceType": "original", "licenseStatus": "approved", "reviewStatus": "approved", "acquiredAt": "2026-09-03T00:00:00.000Z", "publishStatus": "published", "order": 50 },
+    { "id": "usage-new-job", "version": "1.0.0", "slug": "new-job", "name": "入职祝福", "shortLabel": "入职", "quickEntry": false, "creator": "Pindou Studio", "sourceType": "original", "licenseStatus": "approved", "reviewStatus": "approved", "acquiredAt": "2026-09-03T00:00:00.000Z", "publishStatus": "published", "order": 60 },
+    { "id": "usage-anniversary", "version": "1.0.0", "slug": "anniversary", "name": "纪念日", "shortLabel": "纪念", "quickEntry": false, "creator": "Pindou Studio", "sourceType": "original", "licenseStatus": "approved", "reviewStatus": "approved", "acquiredAt": "2026-09-03T00:00:00.000Z", "publishStatus": "published", "order": 70 },
+    { "id": "usage-gift", "version": "1.0.0", "slug": "gift", "name": "礼物", "shortLabel": "礼物", "quickEntry": true, "creator": "Pindou Studio", "sourceType": "original", "licenseStatus": "approved", "reviewStatus": "approved", "acquiredAt": "2026-09-03T00:00:00.000Z", "publishStatus": "published", "order": 80 }
+  ],
+  "patterns": []
+}

@@ -1,0 +1,14 @@
+{
+  "format": "pindou-gallery-pattern",
+  "formatVersion": 1,
+  "contentId": "tiny-heart",
+  "contentVersion": "1.0.0",
+  "width": 2,
+  "height": 2,
+  "palette": { "id": "pindou-basic", "version": "1.0.0" },
+  "cells": ["R01", null, "R01", "R01"],
+  "direction": "normal",
+  "editableTextRegions": [
+    { "id": "message", "defaultText": "Hi", "x": 0, "y": 0, "fontId": "sans", "size": 12, "colorId": "R01", "maxLength": 12 }
+  ]
+}
