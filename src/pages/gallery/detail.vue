@@ -51,6 +51,15 @@ function returnToGallery(): void {
   uni.navigateBack({ fail: () => uni.redirectTo({ url: "/pages/gallery/index" }) });
 }
 
+function previewConstructionChart(): void {
+  if (detailState.value.status !== "ready" || previewFailed.value) return;
+  uni.previewImage({
+    current: detailState.value.detail.previewRef,
+    urls: [detailState.value.detail.previewRef],
+    fail: () => uni.showToast({ title: "暂时无法放大图纸", icon: "none" }),
+  });
+}
+
 onLoad((options) => { loadPattern(options?.id); });
 </script>
 
@@ -82,7 +91,8 @@ onLoad((options) => { loadPattern(options?.id); });
 
     <template v-else-if="detailState.status === 'ready'">
       <view class="detail-preview surface-card">
-        <image v-if="!previewFailed" class="detail-preview__image" :src="detailState.detail.previewRef" mode="widthFix" @error="previewFailed = true" />
+        <image v-if="!previewFailed" class="detail-preview__image" :src="detailState.detail.previewRef" mode="widthFix" @error="previewFailed = true" @tap="previewConstructionChart" />
+        <text v-if="!previewFailed" class="detail-preview__hint">点击放大查看色号</text>
         <view v-else class="detail-preview__fallback"><text>PD</text><text>预览暂不可用</text></view>
       </view>
 

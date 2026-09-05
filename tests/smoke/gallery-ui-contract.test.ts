@@ -105,6 +105,12 @@ describe("gallery discovery UI contract", () => {
     expect(detail).toContain("图纸副本已准备好；完整编辑器将在后续版本开放");
     expect(detail).toContain("galleryRuntime.useCurrentDetail");
     expect(detail).toContain("retryDetail");
+    expect(detail).toContain("previewConstructionChart");
+    expect(detail).toContain("uni.previewImage");
+    expect(detail).toContain("current: detailState.value.detail.previewRef");
+    expect(detail).toContain("urls: [detailState.value.detail.previewRef]");
+    expect(detail).toContain('@tap="previewConstructionChart"');
+    expect(detail).not.toMatch(/identity|login|authorize/i);
     expect(detail).not.toMatch(/identity|uniCloud|fileRef|sha256|payload/i);
     expect(detail).not.toMatch(/editor|export|cloud.?save/i);
   });
