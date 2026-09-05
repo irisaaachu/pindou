@@ -1,6 +1,7 @@
-export interface RenderPatternPayload {
+export interface RenderPayload {
   width: number;
   height: number;
+  direction?: "normal" | "reverse";
   cells: readonly (string | null)[];
 }
 
@@ -8,15 +9,17 @@ export interface RenderPalette {
   colors: Readonly<Record<string, string>>;
 }
 
-export interface RenderPatternOptions {
-  pixelsPerCell: number;
-  showCoordinates: boolean;
-  majorGuideEvery: number;
-  pegboardSize: number;
+export interface RenderConstructionChartOptions {
+  direction?: "normal" | "reverse";
 }
 
-export function renderPatternPng(
-  payload: RenderPatternPayload,
+export function renderCardPng(
+  payload: RenderPayload,
   palette: RenderPalette,
-  options: RenderPatternOptions,
+): Buffer;
+
+export function renderConstructionChartPng(
+  payload: RenderPayload,
+  palette: RenderPalette,
+  options?: RenderConstructionChartOptions,
 ): Buffer;

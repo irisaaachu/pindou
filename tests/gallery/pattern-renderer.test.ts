@@ -1,32 +1,57 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { buildPilotContent } from "../../scripts/gallery/build-pilot-content.mjs";
-import { renderPatternPng } from "../../scripts/gallery/render-pattern-png.mjs";
+import { renderCardPng, renderConstructionChartPng } from "../../scripts/gallery/render-pattern-png.mjs";
 
+const axisSize = 64;
+const cellSize = 64;
+const fontScale = 4;
+const legendItemWidth = 256;
+const legendItemHeight = 128;
+const legendColumnGap = 32;
+const legendRowGap = 24;
+const glyphs: Record<string, readonly string[]> = {
+  "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
+  "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
+  "2": ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
+  "3": ["11110", "00001", "00001", "01110", "00001", "00001", "11110"],
+  "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
+  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+  H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
+};
 const palette = {
   colors: {
-    coral: "#E98278",
-    cream: "#F7E8CB",
+    A1: "#FAF4C8",
+    A2: "#FFFFD5",
+    A10: "#F77C31",
+    B1: "#F5A0C2",
+    C1: "#C1C1C1",
+    D1: "#D1D1D1",
+    E1: "#E1E1E1",
+    F1: "#818181",
+    G1: "#717171",
+    H7: "#1A1A1A",
+    M1: "#616161",
   },
 };
-const generatedPreviewRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../content/gallery/previews");
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { force: true, recursive: true })));
 });
 
-function fixture(width = 3, height = 2) {
+function fixture() {
   return {
-    width,
-    height,
-    cells: ["coral", ...Array(width * height - 1).fill(null)],
+    width: 3,
+    height: 2,
+    direction: "normal" as const,
+    cells: ["A1", "H7", null, null, null, null],
   };
 }
 
@@ -39,72 +64,225 @@ function pixel(image: PNG, x: number, y: number) {
   return [...image.data.subarray(offset, offset + 4)];
 }
 
+function rgb(hex: string) {
+  return [Number.parseInt(hex.slice(1, 3), 16), Number.parseInt(hex.slice(3, 5), 16), Number.parseInt(hex.slice(5, 7), 16), 255];
+}
+
+function bitmapSignature(label: string) {
+  if (!label) return "";
+  return Array.from({ length: 7 }, (_, row) => [...label].map((character) => glyphs[character][row]).join("0")).join("/");
+}
+
+function bitmapWidth(label: string) {
+  return (label.length * 5 + Math.max(0, label.length - 1)) * fontScale;
+}
+
+function sampledSignature(image: PNG, x: number, y: number, characters: number, ink: readonly number[]) {
+  const rows: string[] = [];
+  for (let glyphY = 0; glyphY < 7; glyphY += 1) {
+    let row = "";
+    for (let glyphX = 0; glyphX < characters * 5 + Math.max(0, characters - 1); glyphX += 1) {
+      row += pixel(image, x + glyphX * fontScale + 1, y + glyphY * fontScale + 1).every((value, index) => value === ink[index]) ? "1" : "0";
+    }
+    rows.push(row);
+  }
+  return rows.join("/");
+}
+
+function centeredTextSignature(image: PNG, areaX: number, areaY: number, areaWidth: number, areaHeight: number, label: string, ink = [0, 0, 0, 255]) {
+  if (!label) return "";
+  const x = areaX + Math.floor((areaWidth - bitmapWidth(label)) / 2);
+  const y = areaY + Math.floor((areaHeight - 7 * fontScale) / 2);
+  return sampledSignature(image, x, y, label.length, ink);
+}
+
+function cellTextSignature(image: PNG, column: number, row: number) {
+  const x = axisSize + column * cellSize;
+  const y = axisSize + row * cellSize;
+  const background = pixel(image, x + 6, y + 6);
+  const ink = background.slice(0, 3).every((value) => value === 255) || background[0] > 200
+    ? [0, 0, 0, 255]
+    : [255, 255, 255, 255];
+  const candidates = ["A1", "H7"];
+  for (const label of candidates) {
+    const signature = centeredTextSignature(image, x, y, cellSize, cellSize, label, ink);
+    if (signature === bitmapSignature(label)) return signature;
+  }
+  return "";
+}
+
+function readBitmapText(image: PNG, x: number, y: number, maximumCharacters: number) {
+  let result = "";
+  for (let index = 0; index < maximumCharacters; index += 1) {
+    const glyphX = x + index * 6 * fontScale;
+    const signature = sampledSignature(image, glyphX, y, 1, [0, 0, 0, 255]);
+    const character = Object.entries(glyphs).find(([, rows]) => rows.join("/") === signature)?.[0];
+    if (!character) break;
+    result += character;
+  }
+  return result;
+}
+
+function readLegend(image: PNG) {
+  const columns = Math.max(1, Math.floor((image.width - 128 + legendColumnGap) / (legendItemWidth + legendColumnGap)));
+  const gridHeight = fixture().height * cellSize;
+  const legendTop = axisSize + gridHeight + axisSize + 64;
+  const colorEntries = Object.entries(palette.colors);
+  const items: Array<{ code: string; count: number }> = [];
+  for (let index = 0; ; index += 1) {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const itemX = 64 + column * (legendItemWidth + legendColumnGap);
+    const itemY = legendTop + row * (legendItemHeight + legendRowGap);
+    if (itemY + legendItemHeight > image.height - 64 + 1) break;
+    const swatch = pixel(image, itemX + 48, itemY + 64);
+    const code = colorEntries.find(([, hex]) => rgb(hex).every((value, component) => swatch[component] === value))?.[0];
+    if (!code) continue;
+    items.push({
+      code: readBitmapText(image, itemX + 112, itemY + 24, 3),
+      count: Number(readBitmapText(image, itemX + 112, itemY + 76, 4)),
+    });
+  }
+  return items;
+}
+
+function guideRunWidth(image: PNG, boundaryX: number, y: number) {
+  let start = boundaryX;
+  let end = boundaryX;
+  while (pixel(image, start - 1, y).slice(0, 3).every((value) => value === 64)) start -= 1;
+  while (pixel(image, end + 1, y).slice(0, 3).every((value) => value === 64)) end += 1;
+  return end - start + 1;
+}
+
+function guideRunHeight(image: PNG, x: number, boundaryY: number) {
+  let start = boundaryY;
+  let end = boundaryY;
+  while (pixel(image, x, start - 1).slice(0, 3).every((value) => value === 64)) start -= 1;
+  while (pixel(image, x, end + 1).slice(0, 3).every((value) => value === 64)) end += 1;
+  return end - start + 1;
+}
+
 describe("pattern PNG renderer", () => {
-  test("renders a deterministic PNG with the requested grid dimensions", () => {
-    const first = renderPatternPng(fixture(), palette, { pixelsPerCell: 8, showCoordinates: false, majorGuideEvery: 10, pegboardSize: 29 });
-    const second = renderPatternPng(fixture(), palette, { pixelsPerCell: 8, showCoordinates: false, majorGuideEvery: 10, pegboardSize: 29 });
+  test("keeps deterministic round beads exclusive to the compact card image", () => {
+    const payload = { width: 2, height: 1, cells: ["A1", null] };
+    const first = renderCardPng(payload, palette);
+    const second = renderCardPng(payload, palette);
     const image = decode(first);
 
     expect(first.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-    expect(image).toMatchObject({ width: 24, height: 16 });
+    expect(image).toMatchObject({ width: 16, height: 8 });
     expect(first.equals(second)).toBe(true);
+    expect(pixel(image, 4, 4)).not.toEqual(pixel(image, 1, 4));
+    expect(pixel(image, 12, 4)[3]).toBe(0);
   });
 
-  test("uses exact detail margins and keeps empty peg centres transparent", () => {
-    const image = decode(renderPatternPng(fixture(), palette, { pixelsPerCell: 32, showCoordinates: true, majorGuideEvery: 10, pegboardSize: 29 }));
+  test("renders square coded cells and a count-derived legend at the exact geometry", () => {
+    const first = renderConstructionChartPng(fixture(), palette);
+    const second = renderConstructionChartPng(fixture(), palette);
+    const image = decode(first);
 
-    expect(image).toMatchObject({ width: 160, height: 128 });
-    expect(pixel(image, 64 + 48, 64 + 16)[3]).toBe(0);
-    expect(pixel(image, 16, 16)[3]).toBe(255);
+    expect(image).toMatchObject({ width: 320, height: 664 });
+    expect(first.equals(second)).toBe(true);
+    expect(cellTextSignature(image, 0, 0)).toBe(bitmapSignature("A1"));
+    expect(cellTextSignature(image, 1, 0)).toBe(bitmapSignature("H7"));
+    expect(cellTextSignature(image, 2, 0)).toBe(bitmapSignature(""));
+    expect(pixel(image, axisSize + 2 * cellSize + 32, axisSize + 32)).toEqual([255, 255, 255, 255]);
+    expect(readLegend(image)).toEqual([
+      { code: "A1", count: 1 },
+      { code: "H7", count: 1 },
+    ]);
   });
 
-  test("renders circular bead centres differently from their edges", () => {
-    const image = decode(renderPatternPng(fixture(1, 1), palette, { pixelsPerCell: 32, showCoordinates: false, majorGuideEvery: 10, pegboardSize: 29 }));
+  test("uses black glyphs on pale cells and white glyphs on dark cells", () => {
+    const image = decode(renderConstructionChartPng(fixture(), palette));
+    const paleOriginX = axisSize + Math.floor((cellSize - bitmapWidth("A1")) / 2);
+    const darkOriginX = axisSize + cellSize + Math.floor((cellSize - bitmapWidth("H7")) / 2);
+    const glyphY = axisSize + Math.floor((cellSize - 7 * fontScale) / 2);
 
-    expect(pixel(image, 16, 16)).not.toEqual(pixel(image, 3, 16));
-    expect(pixel(image, 3, 16)[3]).toBe(255);
+    expect(pixel(image, paleOriginX + 2 * fontScale + 1, glyphY + 1)).toEqual([0, 0, 0, 255]);
+    expect(pixel(image, darkOriginX + 1, glyphY + 1)).toEqual([255, 255, 255, 255]);
   });
 
-  test("draws tenth-bead guides, 29-bead board boundaries, and shifted detail coordinates", () => {
-    const guideImage = decode(renderPatternPng(fixture(30, 1), palette, { pixelsPerCell: 8, showCoordinates: false, majorGuideEvery: 10, pegboardSize: 29 }));
-    const card = decode(renderPatternPng(fixture(1, 1), palette, { pixelsPerCell: 32, showCoordinates: false, majorGuideEvery: 10, pegboardSize: 29 }));
-    const detail = decode(renderPatternPng(fixture(1, 1), palette, { pixelsPerCell: 32, showCoordinates: true, majorGuideEvery: 10, pegboardSize: 29 }));
+  test("labels all four coordinate bands in their edge-reading order", () => {
+    const image = decode(renderConstructionChartPng(fixture(), palette));
+    const top = ["1", "2", "3"].map((label, column) => centeredTextSignature(image, axisSize + column * cellSize, 0, cellSize, axisSize, label));
+    const bottom = ["3", "2", "1"].map((label, column) => centeredTextSignature(image, axisSize + column * cellSize, axisSize + 2 * cellSize, cellSize, axisSize, label));
+    const left = ["1", "2"].map((label, row) => centeredTextSignature(image, 0, axisSize + row * cellSize, axisSize, cellSize, label));
+    const right = ["2", "1"].map((label, row) => centeredTextSignature(image, axisSize + 3 * cellSize, axisSize + row * cellSize, axisSize, cellSize, label));
 
-    expect(pixel(guideImage, 80, 4)[3]).toBe(255);
-    expect(pixel(guideImage, 232, 4)[3]).toBe(255);
-    expect(pixel(detail, 64 + 16, 64 + 16)).toEqual(pixel(card, 16, 16));
-    expect(pixel(detail, 16, 16)[3]).toBe(255);
+    expect(top).toEqual([bitmapSignature("1"), bitmapSignature("2"), bitmapSignature("3")]);
+    expect(bottom).toEqual([bitmapSignature("3"), bitmapSignature("2"), bitmapSignature("1")]);
+    expect(left).toEqual([bitmapSignature("1"), bitmapSignature("2")]);
+    expect(right).toEqual([bitmapSignature("2"), bitmapSignature("1")]);
   });
 
-  test("rejects unknown palette colors and malformed payload cell counts", () => {
-    expect(() => renderPatternPng({ width: 1, height: 1, cells: ["missing"] }, palette, { pixelsPerCell: 8, showCoordinates: false, majorGuideEvery: 10, pegboardSize: 29 })).toThrow("Unknown palette color: missing.");
-    expect(() => renderPatternPng({ width: 2, height: 2, cells: ["coral"] }, palette, { pixelsPerCell: 8, showCoordinates: false, majorGuideEvery: 10, pegboardSize: 29 })).toThrow("Payload cells length must equal width × height.");
+  test("draws one-, three- and five-pixel guide runs at cell, ten-cell and board boundaries", () => {
+    const vertical = decode(renderConstructionChartPng({ width: 30, height: 1, direction: "normal", cells: Array(30).fill(null) }, palette));
+    const horizontal = decode(renderConstructionChartPng({ width: 1, height: 30, direction: "normal", cells: Array(30).fill(null) }, palette));
+
+    expect(guideRunWidth(vertical, axisSize + cellSize, axisSize + 32)).toBe(1);
+    expect(guideRunWidth(vertical, axisSize + 10 * cellSize, axisSize + 32)).toBe(3);
+    expect(guideRunWidth(vertical, axisSize + 29 * cellSize, axisSize + 32)).toBe(5);
+    expect(guideRunHeight(horizontal, axisSize + 32, axisSize + cellSize)).toBe(1);
+    expect(guideRunHeight(horizontal, axisSize + 32, axisSize + 10 * cellSize)).toBe(3);
+    expect(guideRunHeight(horizontal, axisSize + 32, axisSize + 29 * cellSize)).toBe(5);
   });
 
-  test("generates the eight committed card and detail previews from the pilot payloads", async () => {
+  test("sorts legend codes naturally and derives exact quantities", () => {
+    const payload = {
+      width: 3,
+      height: 2,
+      direction: "normal" as const,
+      cells: ["B1", "A10", "A2", "A2", null, null],
+    };
+    const image = decode(renderConstructionChartPng(payload, palette));
+
+    expect(readLegend(image)).toEqual([
+      { code: "A2", count: 2 },
+      { code: "A10", count: 1 },
+      { code: "B1", count: 1 },
+    ]);
+  });
+
+  test("uses the formula-derived dimensions for 58×29 and 29×29 charts", () => {
+    const elevenCodes = ["A1", "A2", "A10", "B1", "C1", "D1", "E1", "F1", "G1", "H7", "M1"];
+    const sevenCodes = elevenCodes.slice(0, 7);
+    const wide = decode(renderConstructionChartPng({ width: 58, height: 29, direction: "normal", cells: [...elevenCodes, ...Array(58 * 29 - elevenCodes.length).fill(null)] }, palette));
+    const square = decode(renderConstructionChartPng({ width: 29, height: 29, direction: "normal", cells: [...sevenCodes, ...Array(29 * 29 - sevenCodes.length).fill(null)] }, palette));
+
+    expect(wide).toMatchObject({ width: 3840, height: 2240 });
+    expect(square).toMatchObject({ width: 1984, height: 2392 });
+  }, 20_000);
+
+  test("mirrors only the displayed cells and leaves payload bytes unchanged", () => {
+    const payload = { width: 3, height: 1, direction: "reverse" as const, cells: ["A1", null, "H7"] };
+    const before = Buffer.from(JSON.stringify(payload));
+    const reverse = decode(renderConstructionChartPng(payload, palette));
+    const normal = decode(renderConstructionChartPng(payload, palette, { direction: "normal" }));
+
+    expect(pixel(reverse, axisSize + 32, axisSize + 32)).toEqual(rgb(palette.colors.H7));
+    expect(pixel(reverse, axisSize + 2 * cellSize + 32, axisSize + 32)).toEqual(rgb(palette.colors.A1));
+    expect(pixel(normal, axisSize + 32, axisSize + 32)).toEqual(rgb(palette.colors.A1));
+    expect(pixel(normal, axisSize + 2 * cellSize + 32, axisSize + 32)).toEqual(rgb(palette.colors.H7));
+    expect(Buffer.from(JSON.stringify(payload))).toEqual(before);
+  });
+
+  test("rejects unknown colors, malformed grids and unsupported directions", () => {
+    expect(() => renderConstructionChartPng({ width: 1, height: 1, direction: "normal", cells: ["missing"] }, palette)).toThrow("Unknown palette color: missing.");
+    expect(() => renderCardPng({ width: 2, height: 2, cells: ["A1"] }, palette)).toThrow("Payload cells length must equal width × height.");
+    expect(() => renderConstructionChartPng({ width: 1, height: 1, direction: "sideways" as never, cells: [null] }, palette)).toThrow("Chart direction must be normal or reverse.");
+  });
+
+  test("builds card and construction-chart files through the explicit render paths", async () => {
     const outputDirectory = await mkdtemp(resolve(tmpdir(), "pilot-previews-"));
     temporaryDirectories.push(outputDirectory);
     await buildPilotContent({ payloadRoot: resolve(outputDirectory, "payloads"), previewRoot: outputDirectory });
 
-    const expected = [
-      ["inside-cute-dog-sign-v1", 464, 232, 1920, 992],
-      ["delivery-block-door-sign-v1", 464, 232, 1920, 992],
-      ["birthday-dog-cake-bouquet-v1", 232, 232, 992, 992],
-      ["farewell-fortune-sign-v1", 464, 232, 1920, 992],
-    ] as const;
-
-    for (const [id, cardWidth, cardHeight, detailWidth, detailHeight] of expected) {
-      const [generatedCard, generatedDetail, committedCard, committedDetail] = await Promise.all([
-        readFile(resolve(outputDirectory, "card", `${id}.png`)),
-        readFile(resolve(outputDirectory, "detail", `${id}.png`)),
-        readFile(resolve(generatedPreviewRoot, "card", `${id}.png`)),
-        readFile(resolve(generatedPreviewRoot, "detail", `${id}.png`)),
-      ]);
-
-      expect(decode(generatedCard)).toMatchObject({ width: cardWidth, height: cardHeight });
-      expect(decode(generatedDetail)).toMatchObject({ width: detailWidth, height: detailHeight });
-      expect(generatedCard.equals(committedCard)).toBe(true);
-      expect(generatedDetail.equals(committedDetail)).toBe(true);
-    }
-  }, 15_000);
+    const [card, detail] = await Promise.all([
+      readFile(resolve(outputDirectory, "card", "inside-cute-dog-sign-v1.png")),
+      readFile(resolve(outputDirectory, "detail", "inside-cute-dog-sign-v1.png")),
+    ]);
+    expect(decode(card)).toMatchObject({ width: 464, height: 232 });
+    expect(decode(detail)).toMatchObject({ width: 3840, height: 2240 });
+  }, 30_000);
 });

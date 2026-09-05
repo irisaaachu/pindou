@@ -74,7 +74,7 @@ The legend begins after the bottom coordinate band. It has a 64-pixel top gap an
 
 Legend items are sorted naturally by MARD series and number (`A2` before `A10`, then `B…`). Only used colors appear. The chart itself contains codes and quantities only; the existing detail page carries the Chinese pattern name and other descriptive copy, avoiding operating-system font differences inside generated PNGs.
 
-Under these rules a 58 × 29 pattern with up to eleven colors produces a 3840 × 2240 PNG. A 29 × 29 pattern with seven to eleven colors produces a 1984 × 2328 PNG. These are lossless PNGs, large enough for the first real-device clarity test while remaining comfortably below common 4096-pixel texture limits on either dimension.
+Under these rules a 58 × 29 pattern with up to eleven colors produces a 3840 × 2240 PNG. A 29 × 29 pattern with seven to eleven colors produces a 1984 × 2392 PNG. These are lossless PNGs, large enough for the first real-device clarity test while remaining comfortably below common 4096-pixel texture limits on either dimension.
 
 ## 6. Text and deterministic rendering
 
