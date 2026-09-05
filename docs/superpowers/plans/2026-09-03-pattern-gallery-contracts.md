@@ -818,7 +818,7 @@ Run: `git status --short`
 
 Expected: `.hbuilderx/`, `.superpowers/`, the locally modified account-bound `src/manifest.json` and ignored real config are not staged.
 
-- [ ] **Step 3: Obtain final code and specification review**
+- [x] **Step 3: Obtain final code and specification review**
 
 Review against `docs/superpowers/specs/2026-09-03-pattern-gallery-contracts-design.md`. Resolve every Critical or Important finding with a failing regression test, minimal fix and rerun of `npm run check && npm run build:h5`.
 
