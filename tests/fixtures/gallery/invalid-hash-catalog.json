@@ -6,6 +6,7 @@
       "id": "tiny-heart",
       "version": "1.0.0",
       "name": "Tiny Heart",
+      "description": "A tiny heart.",
       "usageTags": ["gift"],
       "themeTags": ["love"],
       "featureTags": ["editable-text"],

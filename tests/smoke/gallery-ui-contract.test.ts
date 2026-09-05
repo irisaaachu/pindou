@@ -83,8 +83,10 @@ describe("gallery discovery UI contract", () => {
 
     expect(detail).toContain("decodeURIComponent");
     expect(detail).toContain("previewFailed");
+    expect(detail).toContain("detailState.detail.previewRef");
     expect(detail).toContain("physicalWidthMm");
     expect(detail).toContain("detail.name");
+    expect(detail).toContain("detailState.detail.description");
     expect(detail).toContain("detail.tags");
     expect(detail).toContain("detail.width");
     expect(detail).toContain("detail.difficulty");
@@ -104,5 +106,6 @@ describe("gallery discovery UI contract", () => {
     expect(detail).toContain("galleryRuntime.useCurrentDetail");
     expect(detail).toContain("retryDetail");
     expect(detail).not.toMatch(/identity|uniCloud|fileRef|sha256|payload/i);
+    expect(detail).not.toMatch(/editor|export|cloud.?save/i);
   });
 });

@@ -2,7 +2,7 @@
   "bsonType": "object",
   "description": "Published gallery pattern metadata and external payload descriptor",
   "additionalProperties": false,
-  "required": ["content_id", "version", "name", "usage_tags", "theme_tags", "feature_tags", "difficulty", "size_class", "card_cover_ref", "detail_preview_ref", "payload_file_ref", "payload_format_version", "payload_byte_size", "payload_sha256", "grid_width", "grid_height", "physical_width_mm", "physical_height_mm", "palette_id", "palette_version", "default_direction", "color_count", "bead_count", "recommendation_weight", "published_at", "creator", "source_type", "license_status", "review_status", "acquired_at", "publish_status", "order"],
+  "required": ["content_id", "version", "name", "description", "usage_tags", "theme_tags", "feature_tags", "difficulty", "size_class", "card_cover_ref", "detail_preview_ref", "payload_file_ref", "payload_format_version", "payload_byte_size", "payload_sha256", "grid_width", "grid_height", "physical_width_mm", "physical_height_mm", "palette_id", "palette_version", "default_direction", "color_count", "bead_count", "recommendation_weight", "published_at", "creator", "source_type", "license_status", "review_status", "acquired_at", "publish_status", "order"],
   "permission": {
     "read": false,
     "create": false,
@@ -14,6 +14,7 @@
     "content_id": { "bsonType": "string" },
     "version": { "bsonType": "string" },
     "name": { "bsonType": "string" },
+    "description": { "bsonType": "string" },
     "usage_tags": { "bsonType": "array", "items": { "bsonType": "string" } },
     "theme_tags": { "bsonType": "array", "items": { "bsonType": "string" } },
     "feature_tags": { "bsonType": "array", "items": { "bsonType": "string" } },

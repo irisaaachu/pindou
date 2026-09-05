@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { PNG } from "pngjs";
 
 const categoryFields = ["id", "version", "slug", "name", "shortLabel", "quickEntry", "coverRef", "creator", "sourceType", "sourceReference", "licenseStatus", "reviewStatus", "acquiredAt", "publishStatus", "order"];
-const patternFields = ["id", "version", "name", "usageTags", "themeTags", "featureTags", "difficulty", "sizeClass", "coverRef", "previewRef", "payload", "width", "height", "physicalWidthMm", "physicalHeightMm", "palette", "direction", "colorCount", "beadCount", "recommendationWeight", "publishedAt", "creator", "sourceType", "sourceReference", "licenseStatus", "reviewStatus", "acquiredAt", "publishStatus", "order", "intentionalSingleCells"];
+const patternFields = ["id", "version", "name", "description", "usageTags", "themeTags", "featureTags", "difficulty", "sizeClass", "coverRef", "previewRef", "payload", "width", "height", "physicalWidthMm", "physicalHeightMm", "palette", "direction", "colorCount", "beadCount", "recommendationWeight", "publishedAt", "creator", "sourceType", "sourceReference", "licenseStatus", "reviewStatus", "acquiredAt", "publishStatus", "order", "intentionalSingleCells"];
 const provenanceFields = ["creator", "sourceType", "sourceReference", "licenseStatus", "reviewStatus", "acquiredAt", "publishStatus"];
 
 export async function validateCatalog(catalog, readAsset) {
@@ -135,6 +135,7 @@ export function toPatternImport(pattern) {
     content_id: pattern.id,
     version: pattern.version,
     name: pattern.name,
+    description: pattern.description,
     usage_tags: pattern.usageTags,
     theme_tags: pattern.themeTags,
     feature_tags: pattern.featureTags,
@@ -187,7 +188,7 @@ function validatePattern(pattern, path, issues, ids, categorySlugs) {
     if (ids.has(pattern.id)) issue(issues, `${path}.id`, "Content IDs must be unique.");
     ids.add(pattern.id);
   }
-  for (const field of ["name", "coverRef", "previewRef", "creator"]) validateNonEmptyString(pattern[field], `${path}.${field}`, issues);
+  for (const field of ["name", "description", "coverRef", "previewRef", "creator"]) validateNonEmptyString(pattern[field], `${path}.${field}`, issues);
   validateTagArray(pattern.usageTags, `${path}.usageTags`, issues, categorySlugs);
   validateTagArray(pattern.themeTags, `${path}.themeTags`, issues);
   validateTagArray(pattern.featureTags, `${path}.featureTags`, issues);

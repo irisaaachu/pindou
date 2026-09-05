@@ -1,8 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, test, vi } from "vitest";
 
-import { createGalleryController, createGalleryRuntime } from "../../src/application/gallery";
+import { createGalleryController, createGalleryRuntime, createProductionGalleryRuntime } from "../../src/application/gallery";
 import type { GalleryRepository, ProjectRepository } from "../../src/domain/contracts";
 import { sha256Utf8, type GalleryPatternDetail, type GalleryPatternPayloadV1, type GalleryResult } from "../../src/domain/gallery";
+import type { PindouProjectV1 } from "../../src/domain/project";
 
 const summary = {
   id: "tiny-heart", version: "1.0.0", name: "Tiny Heart", coverRef: "cover.png", width: 2, height: 2,
@@ -23,6 +27,101 @@ const detail: GalleryPatternDetail = {
   editableTextRegions: [], creator: "Pindou Studio", sourceType: "original",
   payload: { fileRef: "payload.json", formatVersion: 1, byteSize: new TextEncoder().encode(payloadText).byteLength, sha256: sha256Utf8(payloadText) },
 };
+
+const pilotCatalog = JSON.parse(readFileSync(resolve(process.cwd(), "content/gallery/catalog.json"), "utf8")) as {
+  patterns: Array<{
+    id: string;
+    version: string;
+    name: string;
+    description: string;
+    usageTags: string[];
+    themeTags: string[];
+    featureTags: string[];
+    difficulty: GalleryPatternDetail["difficulty"];
+    sizeClass: GalleryPatternDetail["sizeClass"];
+    coverRef: string;
+    previewRef: string;
+    payload: GalleryPatternDetail["payload"];
+    width: number;
+    height: number;
+    physicalWidthMm: number;
+    physicalHeightMm: number;
+    palette: GalleryPatternDetail["palette"];
+    direction: GalleryPatternDetail["direction"];
+    colorCount: number;
+    beadCount: number;
+    publishedAt: string;
+    creator: string;
+    sourceType: GalleryPatternDetail["sourceType"];
+  }>;
+};
+
+const pilotPatterns = pilotCatalog.patterns.map((pattern) => {
+  const payloadText = readFileSync(resolve(process.cwd(), `content/gallery/payloads/${pattern.id}-v1.json`), "utf8");
+  const payload = JSON.parse(payloadText) as GalleryPatternPayloadV1;
+  const summary: GalleryPatternDetail = {
+    id: pattern.id,
+    version: pattern.version,
+    name: pattern.name,
+    description: pattern.description,
+    coverRef: pattern.coverRef,
+    previewRef: pattern.previewRef,
+    width: pattern.width,
+    height: pattern.height,
+    difficulty: pattern.difficulty,
+    sizeClass: pattern.sizeClass,
+    tags: { usage: pattern.usageTags, themes: pattern.themeTags, features: pattern.featureTags },
+    hasEditableText: payload.editableTextRegions.length > 0,
+    publishedAt: pattern.publishedAt,
+    physicalWidthMm: pattern.physicalWidthMm,
+    physicalHeightMm: pattern.physicalHeightMm,
+    palette: pattern.palette,
+    direction: pattern.direction,
+    colorCount: pattern.colorCount,
+    beadCount: pattern.beadCount,
+    editableTextRegions: payload.editableTextRegions,
+    creator: pattern.creator,
+    sourceType: pattern.sourceType,
+    payload: pattern.payload,
+  };
+  return { summary, payloadText };
+});
+
+function productionController() {
+  let nextProjectId = 1;
+  const downloads = vi.fn(async (descriptor: GalleryPatternDetail["payload"]) => {
+    const pattern = pilotPatterns.find((candidate) => candidate.summary.payload.fileRef === descriptor.fileRef);
+    if (!pattern) throw new Error("Unknown production payload");
+    return { ok: true as const, data: pattern.payloadText };
+  });
+  const repository: GalleryRepository = {
+    listCategories: async () => ({ ok: true, data: [] }),
+    listPatterns: vi.fn(async (query) => ({
+      ok: true as const,
+      data: {
+        items: pilotPatterns.map((pattern) => pattern.summary).filter((pattern) =>
+          (!query.search || pattern.name.includes(query.search))
+          && (!query.usageTags || query.usageTags.every((tag) => pattern.tags.usage.includes(tag))),
+        ).map(({ description, previewRef, physicalWidthMm, physicalHeightMm, palette, direction, colorCount, beadCount, editableTextRegions, creator, sourceType, payload, ...summary }) => summary),
+      },
+    })),
+    getPattern: vi.fn(async (id) => ({ ok: true as const, data: pilotPatterns.find((pattern) => pattern.summary.id === id)?.summary ?? null })),
+  };
+  const savedProjects = new Map<string, PindouProjectV1>();
+  const projects: ProjectRepository = {
+    list: async () => [],
+    get: async (id) => savedProjects.get(id) ?? null,
+    delete: async () => undefined,
+    save: async (project) => { savedProjects.set(project.id, project); },
+  };
+  const dependencies = {
+    repository,
+    payloadSource: { download: downloads },
+    projects,
+    copyDependencies: { createId: () => `pilot-local-${nextProjectId++}`, nowIso: () => "2026-09-05T00:00:00.000Z" },
+  };
+  return { value: createGalleryController(dependencies), downloads, savedProjects };
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -54,6 +153,75 @@ function controller(overrides: Partial<GalleryRepository> = {}, download = vi.fn
 }
 
 describe("gallery controller", () => {
+  test("creates the production guest runtime without invoking identity", () => {
+    const importObject = vi.fn(() => ({}));
+    vi.stubGlobal("uni", {});
+    vi.stubGlobal("uniCloud", { importObject });
+
+    try {
+      createProductionGalleryRuntime();
+      expect(importObject).toHaveBeenCalledWith("pindou-gallery");
+      expect(importObject).not.toHaveBeenCalledWith("pindou-identity");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  test("browses four production summaries by exact Chinese name and each usage without payload or identity access", async () => {
+    const { value, downloads } = productionController();
+
+    await value.refresh({ order: "featured", limit: 24 });
+    expect(value.list).toEqual(expect.objectContaining({ status: "ready", items: expect.any(Array) }));
+    if (value.list.status !== "ready") throw new Error("Expected pilot summaries");
+    expect(value.list.items.map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: "inside-cute-dog-sign", name: "内有萌犬" },
+      { id: "delivery-block-door-sign", name: "快递挡在门口" },
+      { id: "birthday-dog-cake-bouquet", name: "生日小伙伴" },
+      { id: "farewell-fortune-sign", name: "脱离苦海 发大财" },
+    ]);
+    expect(value.list.items.every((item) => !("previewRef" in item) && !("payload" in item))).toBe(true);
+
+    await value.refresh({ search: "内有萌犬", order: "featured", limit: 24 });
+    expect(value.list).toEqual(expect.objectContaining({ status: "ready", items: [expect.objectContaining({ id: "inside-cute-dog-sign", name: "内有萌犬" })] }));
+    if (value.list.status !== "ready") throw new Error("Expected pilot summaries");
+    expect(value.list.items).toHaveLength(1);
+    expect(value.list.items[0]).not.toHaveProperty("previewRef");
+    expect(value.list.items[0]).not.toHaveProperty("payload");
+
+    for (const [usage, id] of [["door-sign", "inside-cute-dog-sign"], ["delivery-sign", "delivery-block-door-sign"], ["birthday", "birthday-dog-cake-bouquet"], ["farewell", "farewell-fortune-sign"]]) {
+      await value.refresh({ usageTags: [usage], order: "featured", limit: 24 });
+      expect(value.list).toEqual(expect.objectContaining({ status: "ready", items: [expect.objectContaining({ id })] }));
+    }
+
+    expect(downloads).not.toHaveBeenCalled();
+  });
+
+  test("loads production preview metadata before explicit payload use and persists independent local copies", async () => {
+    const { value, downloads, savedProjects } = productionController();
+
+    await value.loadDetail("inside-cute-dog-sign");
+    expect(value.detail).toEqual(expect.objectContaining({
+      status: "ready",
+      detail: expect.objectContaining({
+        name: "内有萌犬",
+        previewRef: "previews/detail/inside-cute-dog-sign-v1.png",
+        payload: expect.objectContaining({ fileRef: "payloads/inside-cute-dog-sign-v1.json" }),
+      }),
+    }));
+    expect(downloads).not.toHaveBeenCalled();
+
+    await expect(value.useCurrentDetail()).resolves.toEqual(expect.objectContaining({ ok: true }));
+    await expect(value.useCurrentDetail()).resolves.toEqual(expect.objectContaining({ ok: true }));
+    const copies = [...savedProjects.values()];
+
+    expect(downloads).toHaveBeenCalledTimes(2);
+    expect(copies).toHaveLength(2);
+    expect(copies.map((project) => project.id)).toEqual(["pilot-local-1", "pilot-local-2"]);
+    expect(copies.every((project) => project.source.type === "gallery" && project.source.patternId === "inside-cute-dog-sign")).toBe(true);
+    copies[0].cells[0] = null;
+    expect(copies[1].cells[0]).toBe(JSON.parse(pilotPatterns[0].payloadText).cells[0]);
+  });
+
   test("moves list from idle through loading to ready and preserves the submitted query", async () => {
     const { value, repository } = controller();
     expect(value.list).toEqual({ status: "idle" });

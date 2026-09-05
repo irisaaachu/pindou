@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+
 import { describe, expect, test, vi } from "vitest";
 
 import {
@@ -5,6 +9,16 @@ import {
   createUniCloudGalleryRepository,
   type GalleryCloudDependencies,
 } from "../../src/adapters/gallery";
+import { resolveCloudAssetRefs } from "../../scripts/gallery/build-gallery-import.mjs";
+import { toPatternImport } from "../../scripts/gallery/gallery-contract.mjs";
+
+const require = createRequire(import.meta.url);
+const { projectPatternDetail } = require(resolve(process.cwd(), "uniCloud-aliyun/cloudfunctions/pindou-gallery/gallery-core.js")) as {
+  projectPatternDetail(record: unknown): unknown;
+};
+const pilotCatalog = JSON.parse(readFileSync(resolve(process.cwd(), "content/gallery/catalog.json"), "utf8")) as {
+  patterns: Array<{ id: string; version: string }>;
+};
 
 const payloadDescriptor = {
   fileRef: "https://temporary.example/tiny-heart.json",
@@ -62,6 +76,26 @@ function dependencies(overrides: Partial<GalleryCloudDependencies> = {}): Galler
 }
 
 describe("uniCloud gallery repository", () => {
+  test("accepts a production pilot detail after its cloud asset references are resolved", async () => {
+    const cloudFileMap = Object.fromEntries(pilotCatalog.patterns.flatMap((pattern) => [
+      [`gallery/${pattern.id}/${pattern.version}/payload`, `cloud://test-space/${pattern.id}/payload`],
+      [`gallery/${pattern.id}/${pattern.version}/card`, `cloud://test-space/${pattern.id}/card`],
+      [`gallery/${pattern.id}/${pattern.version}/detail`, `cloud://test-space/${pattern.id}/detail`],
+    ]));
+    const productionPattern = resolveCloudAssetRefs(pilotCatalog, cloudFileMap).patterns[0];
+    const detail = projectPatternDetail(toPatternImport(productionPattern));
+    const deps = dependencies({ getPattern: vi.fn(async () => ({ ok: true, data: detail })) });
+
+    await expect(createUniCloudGalleryRepository(deps).getPattern(productionPattern.id)).resolves.toMatchObject({
+      ok: true,
+      data: expect.objectContaining({
+        id: "inside-cute-dog-sign",
+        name: "内有萌犬",
+        previewRef: "cloud://test-space/inside-cute-dog-sign/detail",
+      }),
+    });
+  });
+
   test("maps validated public category envelopes without consulting identity state", async () => {
     const deps = dependencies();
     const repository = createUniCloudGalleryRepository(deps);
