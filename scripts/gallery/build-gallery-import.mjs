@@ -4,18 +4,24 @@ import { fileURLToPath } from "node:url";
 
 import { compareSemanticVersions, toCategoryImport, toPatternImport, validateCatalog } from "./gallery-contract.mjs";
 
+export function writeJsonLines(records) {
+  return records.map((record) => JSON.stringify(record)).join("\n") + (records.length ? "\n" : "");
+}
+
 export async function buildGalleryImport(catalog, readAsset, outputDirectory) {
   const issues = await validateCatalog(catalog, readAsset);
   if (issues.length > 0) throw new Error(`Gallery catalog is invalid:\n${issues.map(({ path, message }) => `${path}: ${message}`).join("\n")}`);
   const categories = catalog.categories.slice().sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)).map((item) => ({ _id: `gallery-category:${item.id}@${item.version}`, ...toCategoryImport(item) }));
   const patterns = catalog.patterns.slice().sort((left, right) => left.id.localeCompare(right.id) || compareSemanticVersions(left.version, right.version)).map((item) => ({ _id: `gallery-pattern:${item.id}@${item.version}`, ...toPatternImport(item) }));
   await mkdir(outputDirectory, { recursive: true });
-  const categoryPath = resolve(outputDirectory, "categories.json");
-  const patternPath = resolve(outputDirectory, "patterns.json");
-  await Promise.all([rm(categoryPath, { force: true }), rm(patternPath, { force: true })]);
+  const obsoleteCategoryPath = resolve(outputDirectory, "categories.json");
+  const obsoletePatternPath = resolve(outputDirectory, "patterns.json");
+  const categoryPath = resolve(outputDirectory, "categories-import.json");
+  const patternPath = resolve(outputDirectory, "patterns-import.json");
+  await Promise.all([rm(obsoleteCategoryPath, { force: true }), rm(obsoletePatternPath, { force: true })]);
   await Promise.all([
-    writeFile(categoryPath, `${JSON.stringify(categories, null, 2)}\n`, "utf8"),
-    writeFile(patternPath, `${JSON.stringify(patterns, null, 2)}\n`, "utf8"),
+    writeFile(categoryPath, writeJsonLines(categories), "utf8"),
+    writeFile(patternPath, writeJsonLines(patterns), "utf8"),
   ]);
 }
 

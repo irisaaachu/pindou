@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,8 +9,11 @@ import { buildGalleryImport } from "../../scripts/gallery/build-gallery-import.m
 import { compareSemanticVersions, validateCatalog } from "../../scripts/gallery/gallery-contract.mjs";
 
 const fixtureDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/gallery");
+const repositoryRoot = resolve(fixtureDirectory, "../../..");
+const galleryContentDirectory = resolve(repositoryRoot, "content/gallery");
 const validCatalog = JSON.parse(await readFile(resolve(fixtureDirectory, "valid-catalog.json"), "utf8"));
 const invalidHashCatalog = JSON.parse(await readFile(resolve(fixtureDirectory, "invalid-hash-catalog.json"), "utf8"));
+const publishedCatalog = JSON.parse(await readFile(resolve(galleryContentDirectory, "catalog.json"), "utf8"));
 const temporaryDirectories: string[] = [];
 
 async function readFixtureAsset(fileRef: string): Promise<string | null> {
@@ -71,31 +74,36 @@ describe("gallery content tooling", () => {
     expect((await validateCatalog(validCatalog, readInvalidAsset)).map((issue) => issue.path)).toContain("patterns[0].payload.editableTextRegions[0].x");
   });
 
-  test("writes byte-identical deterministic import bundles", async () => {
+  test("writes eight category objects as JSONL and an empty pattern file", async () => {
     const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-import-"));
     temporaryDirectories.push(outputDirectory);
+    const obsoleteCategories = resolve(outputDirectory, "categories.json");
+    const obsoletePatterns = resolve(outputDirectory, "patterns.json");
+    await Promise.all([writeFile(obsoleteCategories, "obsolete", "utf8"), writeFile(obsoletePatterns, "obsolete", "utf8")]);
 
-    await buildGalleryImport(validCatalog, readFixtureAsset, outputDirectory);
-    const firstCategories = await readFile(resolve(outputDirectory, "categories.json"), "utf8");
-    const firstPatterns = await readFile(resolve(outputDirectory, "patterns.json"), "utf8");
-    await buildGalleryImport(validCatalog, readFixtureAsset, outputDirectory);
+    await buildGalleryImport(publishedCatalog, readFixtureAsset, outputDirectory);
+    const categories = await readFile(resolve(outputDirectory, "categories-import.json"), "utf8");
+    const patterns = await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8");
+    const categoryLines = categories.trimEnd().split("\n");
 
-    expect(await readFile(resolve(outputDirectory, "categories.json"), "utf8")).toBe(firstCategories);
-    expect(await readFile(resolve(outputDirectory, "patterns.json"), "utf8")).toBe(firstPatterns);
-    expect(JSON.parse(firstCategories)[0]).toMatchObject({ content_id: "usage-gift", short_label: "礼物" });
-    expect(JSON.parse(firstPatterns)[0]).toMatchObject({ content_id: "tiny-heart", payload_file_ref: "payloads/tiny-heart-v1.json" });
-    expect(JSON.parse(firstCategories)[0]._id).toBe("gallery-category:usage-gift@1.0.0");
-    expect(JSON.parse(firstPatterns)[0]._id).toBe("gallery-pattern:tiny-heart@1.0.0");
+    expect(categoryLines).toHaveLength(8);
+    expect(categoryLines.map((line) => JSON.parse(line))).toEqual(expect.arrayContaining([
+      expect.objectContaining({ _id: "gallery-category:usage-gift@1.0.0", content_id: "usage-gift", short_label: "礼物" }),
+    ]));
+    expect(() => JSON.parse(categories)).toThrow();
+    expect(Buffer.byteLength(patterns, "utf8")).toBe(0);
+    await expect(readFile(obsoleteCategories, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(obsoletePatterns, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   test("uses one immutable database identity per content ID and version", async () => {
     const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-import-"));
     temporaryDirectories.push(outputDirectory);
     await buildGalleryImport(validCatalog, readFixtureAsset, outputDirectory);
-    const first = JSON.parse(await readFile(resolve(outputDirectory, "patterns.json"), "utf8"))[0];
+    const first = JSON.parse((await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8")).trim());
     const changed = { ...validCatalog, patterns: [{ ...validCatalog.patterns[0], name: "Conflicting name" }] };
     await buildGalleryImport(changed, readFixtureAsset, outputDirectory);
-    const conflict = JSON.parse(await readFile(resolve(outputDirectory, "patterns.json"), "utf8"))[0];
+    const conflict = JSON.parse((await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8")).trim());
 
     expect(conflict._id).toBe(first._id);
     expect(conflict.name).not.toBe(first.name);

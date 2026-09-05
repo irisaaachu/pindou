@@ -1,0 +1,2 @@
+content/gallery/payloads/*.json text eol=lf
+tests/fixtures/gallery/payloads/*.json text eol=lf
