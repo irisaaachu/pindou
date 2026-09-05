@@ -10,13 +10,15 @@
 
 ## 1. Product Goal
 
-Pindou helps bead-art users create clear, printable and editable bead patterns on a phone. The MVP prioritizes three creation paths:
+Pindou helps bead-art users create clear, printable and editable bead patterns on a phone. The MVP prioritizes the quality of usable bead patterns before supporting breadth around them. Its three creation paths are:
 
 1. Convert a local photo into a bead pattern.
 2. Start from a complete pattern in the pattern gallery.
 3. Combine original reusable elements in the DIY composer.
 
 The MVP does not implement the community. Its project model must remain suitable for a future community without adding speculative community behavior now.
+
+The photo-to-pattern engine, perceptual color matching, optional dithering, background removal, connected-region cleanup, verified physical palettes, bead usage statistics and print-quality export are core MVP requirements rather than post-MVP enhancements. After the four-pattern gallery pilot proves the content pipeline, these generator and output capabilities are implemented before the DIY composer and before any community work.
 
 ## 2. Product Principles
 
@@ -537,31 +539,32 @@ Each item is an independent review gate. Detailed file-level implementation plan
 4. Establish uniCloud, database rules and content-security foundations.
 5. Implement guest state and minimal WeChat identity authorization.
 6. Implement pattern-gallery categories and content contracts.
-7. Produce and import the first 24 gallery patterns.
-8. Implement the DIY element-library contract and first approximately 40 elements.
-9. Implement the DIY pattern composer.
-10. Reserve and validate the future generated-image DIY element boundary without exposing the feature.
-11. Implement local photo intake and privacy controls.
-12. Implement crop, dimensions and scene presets.
-13. Run the generation-quality benchmark and select algorithms.
-14. Verify WeChat generation performance and Worker/fallback feasibility.
-15. Implement the production local image-to-bead engine.
-16. Implement upload-immediately-generates and live preview behavior.
-17. Implement verified multi-brand palettes and color matching.
-18. Validate the mobile canvas interaction prototype.
-19. Implement the production bead-grid renderer.
-20. Implement the basic manual grid editor.
-21. Implement text-to-bead editing.
-22. Implement front, reverse and non-destructive mirror behavior.
-23. Implement local drafts and portable project files.
-24. Implement cloud project save, naming, timestamps and synchronization.
-25. Implement usage statistics, crafting highlight and purchasing lists.
-26. Implement high-resolution PNG and SVG export.
-27. Implement vector PDF and A4 automatic tiling.
-28. Implement the Create project-management page.
-29. Implement My, optional profile settings and privacy controls.
-30. Complete end-to-end performance, compatibility, privacy and golden-fixture acceptance.
-31. Prepare the WeChat Mini Program production release and review materials.
+7. Produce and import four original gallery pilot patterns, proving the complete content pipeline.
+8. Implement local photo intake, orientation correction and privacy controls.
+9. Implement crop, free dimensions, physical-size estimates and scene presets.
+10. Run the generation-quality benchmark across area sampling, dominant-color sampling, perceptual distance, dithering, connected-region cleanup, boundary background removal and color remapping; select the production algorithms from evidence.
+11. Verify WeChat generation performance and Worker/fallback feasibility.
+12. Implement the production local image-to-bead engine, including the selected background and speckle cleanup behavior.
+13. Implement upload-immediately-generates, debounced regeneration and fast/full-quality preview behavior.
+14. Implement verified MARD, Perler and Hama palettes, CIEDE2000-class perceptual matching, color exclusion and remapping.
+15. Validate the mobile canvas interaction prototype.
+16. Implement the production bead-grid renderer with coordinates and 29 × 29 board boundaries.
+17. Implement the basic manual grid editor.
+18. Implement text-to-bead editing.
+19. Implement front, reverse and non-destructive mirror behavior.
+20. Implement usage statistics, color highlighting and purchasing lists.
+21. Implement high-resolution PNG and SVG export with grid, color codes and usage legend.
+22. Implement vector PDF and A4 automatic tiling.
+23. Produce and import the remaining twenty approved gallery patterns from user-supplied or separately approved original sources.
+24. Implement local drafts and portable project files.
+25. Implement cloud project save, naming, timestamps and synchronization.
+26. Implement the DIY element-library contract and first approximately 40 elements.
+27. Implement the DIY pattern composer.
+28. Reserve and validate the future generated-image DIY element boundary without exposing the feature.
+29. Implement the Create project-management page.
+30. Implement My, optional profile settings and privacy controls.
+31. Complete end-to-end performance, compatibility, privacy and golden-fixture acceptance.
+32. Prepare the WeChat Mini Program production release and review materials.
 
 ## 18. Explicit Non-Goals
 
@@ -594,4 +597,3 @@ The MVP excludes:
 - [x] Cloud project naming and timestamp semantics are explicit.
 - [x] Community and other post-MVP work are excluded.
 - [x] Every confirmed requirement maps to the milestone sequence.
-
