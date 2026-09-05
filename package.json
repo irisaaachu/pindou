@@ -39,6 +39,7 @@
     "type-check": "vue-tsc --noEmit",
     "validate:gallery": "node scripts/gallery/validate-gallery.mjs",
     "build:gallery-import": "node scripts/gallery/build-gallery-import.mjs",
+    "sync:mard-palette": "node scripts/gallery/sync-mard-palette.mjs",
     "check:cloud": "node scripts/cloud/validate-foundations.mjs",
     "check": "npm run test && npm run lint && npm run type-check && npm run validate:gallery && npm run check:cloud && npm run build:mp-weixin"
   },

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const defaultPalettePath = fileURLToPath(new URL("../../content/gallery/palettes/pindou-soft-original-v1.json", import.meta.url));
+const defaultPalettePath = fileURLToPath(new URL("../../content/gallery/palettes/mard-221-v2026.09.json", import.meta.url));
 const defaultPalette = loadPalette();
 const colorIds = new Set(Object.keys(defaultPalette.colors));
 
