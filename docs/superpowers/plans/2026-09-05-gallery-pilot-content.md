@@ -289,15 +289,15 @@ Expected: all tests, lint, type checks, content/cloud validation and both produc
 
 Verify four payloads, four cards, four detail PNGs, twelve upload-manifest entries and four JSONL pattern lines after a synthetic mapping. Use `git grep` over tracked files; do not recursively scan the ignored real uni-id config or cloud mapping.
 
-- [ ] **Step 3: Obtain independent code, content and specification review**
+- [x] **Step 3: Obtain independent code, content and specification review**
 
 Review every change against the spec. Treat copied-IP resemblance, incorrect text, nondeterministic assets, raster-as-source, credential leakage, JSON-array imports or guest identity prompts as blocking findings.
 
-- [ ] **Step 4: Mark completed plan items and commit delivery state**
+- [x] **Step 4: Mark completed plan items and commit delivery state**
 
 Stage only the plan and directly approved Milestone 7 files. Confirm local account files remain unstaged.
 
-- [ ] **Step 5: Merge, tag and push**
+- [x] **Step 5: Merge, tag and push**
 
 Fast-forward `main`, create annotated tag `milestone-07-gallery-pilot-content`, push `main` and the tag, fetch, and prove local HEAD, `origin/main` and dereferenced tag are equal.
 
