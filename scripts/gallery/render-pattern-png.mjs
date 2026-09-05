@@ -13,6 +13,7 @@ const legendItemHeight = 128;
 const legendColumnGap = 32;
 const legendRowGap = 24;
 const fontScale = 4;
+const compactCellFontScale = 3;
 const transparent = [0, 0, 0, 0];
 const white = [255, 255, 255, 255];
 const black = [0, 0, 0, 255];
@@ -163,7 +164,7 @@ function drawChartCells(image, payload, palette, direction) {
       }
       const fill = color(palette.colors[code]);
       fillRect(image, x, y, cellSize, cellSize, fill);
-      drawCenteredText(image, code, x, y, cellSize, cellSize, contrastInk(fill));
+      drawCenteredText(image, code, x, y, cellSize, cellSize, contrastInk(fill), cellTextScale(code));
     }
   }
 }
@@ -223,17 +224,22 @@ function contrastInk(fill) {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue > 0.45 ? black : white;
 }
 
-function drawCenteredText(image, label, x, y, width, height, ink) {
+function cellTextScale(label) {
+  return bitmapTextWidth(label) <= cellSize ? fontScale : compactCellFontScale;
+}
+
+function drawCenteredText(image, label, x, y, width, height, ink, scale = fontScale) {
   drawBitmapText(
     image,
     label,
-    x + Math.floor((width - bitmapTextWidth(label)) / 2),
-    y + Math.floor((height - bitmapRegistry.height * fontScale) / 2),
+    x + Math.floor((width - bitmapTextWidth(label, scale)) / 2),
+    y + Math.floor((height - bitmapRegistry.height * scale) / 2),
     ink,
+    scale,
   );
 }
 
-function drawBitmapText(image, label, x, y, ink) {
+function drawBitmapText(image, label, x, y, ink, scale = fontScale) {
   [...label].forEach((character, characterIndex) => {
     const glyph = bitmapRegistry.glyphs[character];
     if (!glyph) throw new Error(`Chart bitmap glyph is missing: ${character}.`);
@@ -241,10 +247,10 @@ function drawBitmapText(image, label, x, y, ink) {
       [...row].forEach((bit, glyphX) => {
         if (bit === "1") fillRect(
           image,
-          x + (characterIndex * (bitmapRegistry.width + bitmapRegistry.spacing) + glyphX) * fontScale,
-          y + glyphY * fontScale,
-          fontScale,
-          fontScale,
+          x + (characterIndex * (bitmapRegistry.width + bitmapRegistry.spacing) + glyphX) * scale,
+          y + glyphY * scale,
+          scale,
+          scale,
           ink,
         );
       });
@@ -252,8 +258,8 @@ function drawBitmapText(image, label, x, y, ink) {
   });
 }
 
-function bitmapTextWidth(label) {
-  return (label.length * bitmapRegistry.width + Math.max(0, label.length - 1) * bitmapRegistry.spacing) * fontScale;
+function bitmapTextWidth(label, scale = fontScale) {
+  return (label.length * bitmapRegistry.width + Math.max(0, label.length - 1) * bitmapRegistry.spacing) * scale;
 }
 
 function drawVerticalLine(image, x, startY, endY, rgba) {

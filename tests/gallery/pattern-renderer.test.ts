@@ -30,6 +30,7 @@ const palette = {
     A1: "#FAF4C8",
     A2: "#FFFFD5",
     A10: "#F77C31",
+    A11: "#FFDD99",
     B1: "#F5A0C2",
     C1: "#C1C1C1",
     D1: "#D1D1D1",
@@ -73,27 +74,27 @@ function bitmapSignature(label: string) {
   return Array.from({ length: 7 }, (_, row) => [...label].map((character) => glyphs[character][row]).join("0")).join("/");
 }
 
-function bitmapWidth(label: string) {
-  return (label.length * 5 + Math.max(0, label.length - 1)) * fontScale;
+function bitmapWidth(label: string, scale = fontScale) {
+  return (label.length * 5 + Math.max(0, label.length - 1)) * scale;
 }
 
-function sampledSignature(image: PNG, x: number, y: number, characters: number, ink: readonly number[]) {
+function sampledSignature(image: PNG, x: number, y: number, characters: number, ink: readonly number[], scale = fontScale) {
   const rows: string[] = [];
   for (let glyphY = 0; glyphY < 7; glyphY += 1) {
     let row = "";
     for (let glyphX = 0; glyphX < characters * 5 + Math.max(0, characters - 1); glyphX += 1) {
-      row += pixel(image, x + glyphX * fontScale + 1, y + glyphY * fontScale + 1).every((value, index) => value === ink[index]) ? "1" : "0";
+      row += pixel(image, x + glyphX * scale + 1, y + glyphY * scale + 1).every((value, index) => value === ink[index]) ? "1" : "0";
     }
     rows.push(row);
   }
   return rows.join("/");
 }
 
-function centeredTextSignature(image: PNG, areaX: number, areaY: number, areaWidth: number, areaHeight: number, label: string, ink = [0, 0, 0, 255]) {
+function centeredTextSignature(image: PNG, areaX: number, areaY: number, areaWidth: number, areaHeight: number, label: string, ink = [0, 0, 0, 255], scale = fontScale) {
   if (!label) return "";
-  const x = areaX + Math.floor((areaWidth - bitmapWidth(label)) / 2);
-  const y = areaY + Math.floor((areaHeight - 7 * fontScale) / 2);
-  return sampledSignature(image, x, y, label.length, ink);
+  const x = areaX + Math.floor((areaWidth - bitmapWidth(label, scale)) / 2);
+  const y = areaY + Math.floor((areaHeight - 7 * scale) / 2);
+  return sampledSignature(image, x, y, label.length, ink, scale);
 }
 
 function cellTextSignature(image: PNG, column: number, row: number) {
@@ -103,12 +104,23 @@ function cellTextSignature(image: PNG, column: number, row: number) {
   const ink = background.slice(0, 3).every((value) => value === 255) || background[0] > 200
     ? [0, 0, 0, 255]
     : [255, 255, 255, 255];
-  const candidates = ["A1", "H7"];
+  const candidates = ["A1", "A10", "A11", "H7"];
   for (const label of candidates) {
-    const signature = centeredTextSignature(image, x, y, cellSize, cellSize, label, ink);
+    const scale = label.length === 3 ? 3 : fontScale;
+    const signature = centeredTextSignature(image, x, y, cellSize, cellSize, label, ink, scale);
     if (signature === bitmapSignature(label)) return signature;
   }
   return "";
+}
+
+function nonWhitePixelCount(image: PNG, startX: number, startY: number, endX: number, endY: number) {
+  let count = 0;
+  for (let y = startY; y < endY; y += 1) {
+    for (let x = startX; x < endX; x += 1) {
+      if (!pixel(image, x, y).every((value) => value === 255)) count += 1;
+    }
+  }
+  return count;
 }
 
 function readBitmapText(image: PNG, x: number, y: number, maximumCharacters: number) {
@@ -201,6 +213,13 @@ describe("pattern PNG renderer", () => {
 
     expect(pixel(image, paleOriginX + 2 * fontScale + 1, glyphY + 1)).toEqual([0, 0, 0, 255]);
     expect(pixel(image, darkOriginX + 1, glyphY + 1)).toEqual([255, 255, 255, 255]);
+  });
+
+  test("keeps a three-character MARD code inside its cell", () => {
+    const image = decode(renderConstructionChartPng({ width: 2, height: 1, direction: "normal", cells: [null, "A11"] }, palette));
+
+    expect(nonWhitePixelCount(image, axisSize + 3, axisSize + 3, axisSize + cellSize, axisSize + cellSize - 2)).toBe(0);
+    expect(cellTextSignature(image, 1, 0)).toBe(bitmapSignature("A11"));
   });
 
   test("labels all four coordinate bands in their edge-reading order", () => {
