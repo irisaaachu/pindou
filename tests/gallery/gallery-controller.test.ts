@@ -102,7 +102,19 @@ function productionController() {
         items: pilotPatterns.map((pattern) => pattern.summary).filter((pattern) =>
           (!query.search || pattern.name.includes(query.search))
           && (!query.usageTags || query.usageTags.every((tag) => pattern.tags.usage.includes(tag))),
-        ).map(({ description, previewRef, physicalWidthMm, physicalHeightMm, palette, direction, colorCount, beadCount, editableTextRegions, creator, sourceType, payload, ...summary }) => summary),
+        ).map((pattern) => ({
+          id: pattern.id,
+          version: pattern.version,
+          name: pattern.name,
+          coverRef: pattern.coverRef,
+          width: pattern.width,
+          height: pattern.height,
+          difficulty: pattern.difficulty,
+          sizeClass: pattern.sizeClass,
+          tags: pattern.tags,
+          hasEditableText: pattern.hasEditableText,
+          publishedAt: pattern.publishedAt,
+        })),
       },
     })),
     getPattern: vi.fn(async (id) => ({ ok: true as const, data: pilotPatterns.find((pattern) => pattern.summary.id === id)?.summary ?? null })),

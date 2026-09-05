@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, test } from "vitest";
 
+import type { PilotColorId } from "../../scripts/gallery/grid-authoring.mjs";
+
 import {
   collectColorIds,
   countBeads,
@@ -28,7 +30,8 @@ describe("pilot grid authoring", () => {
     expect(filled.cells).toEqual([null, null, null, null, null, "coral"]);
     expect(Object.isFrozen(empty)).toBe(true);
     expect(Object.isFrozen(empty.cells)).toBe(true);
-    expect(() => { empty.cells[0] = "mint"; }).toThrow();
+    const mutableCells = empty.cells as PilotColorId[];
+    expect(() => { mutableCells[0] = "mint"; }).toThrow();
   });
 
   test("rejects cells outside the grid bounds", () => {
@@ -70,7 +73,7 @@ describe("pilot grid authoring", () => {
   });
 
   test("rejects unknown palette colors", () => {
-    expect(() => setCell(createGrid(1, 1), 0, 0, "not-a-pilot-color")).toThrow(/color/i);
+    expect(() => setCell(createGrid(1, 1), 0, 0, "not-a-pilot-color" as PilotColorId)).toThrow(/color/i);
   });
 
   test("loads the stable pilot palette", () => {
