@@ -43,4 +43,15 @@ GitHub 中出现这些文件，只能证明云基础层已准备；在用户登�
 6. 在云端数据库中确认 Milestone 6 恰好有 8 个分类、0 个正式图纸。0 个正式图纸是本阶段的预期结果，不是部署失败。
 7. 在 HBuilderX 中连接云端云函数环境并运行微信小程序，确认未登录用户可以直接看到图库空状态，且浏览过程不会弹出登录授权。
 
-Milestone 7 将补充预览图、图纸载荷资源以及 24 条正式图纸记录；在此之前不要用临时或无来源记录填充正式图库。
+Milestone 7 将补充预览图、图纸载荷资源以及 4 条正式图纸记录；在此之前不要用临时或无来源记录填充正式图库。
+
+## 五、Milestone 7：上传图纸资源并导入四条正式记录
+
+以下步骤在已经完成本指南前四节、且服务空间已关联的 HBuilderX 本机执行。不会读取或修改真实 `uni-id/config.json`。
+
+1. 在项目根目录运行 `node scripts/gallery/build-gallery-upload-manifest.mjs`。打开 `generated/gallery-import/asset-upload-manifest.json`，按 `assets` 数组的顺序处理全部 12 条记录；每条的 `path` 是要上传的本地文件，`logicalKey` 是该文件在本次上传中的唯一标识。
+2. 在 HBuilderX 中右键 `uniCloud-aliyun`，选择“打开 uniCloud Web 控制台”，进入已关联服务空间的“云存储”。逐条上传清单中的本地文件，并把云端对象路径填写为同一条记录的 `logicalKey`。每次上传完成后，在云存储详情中复制该对象返回的 `cloud://` 文件 ID。
+3. 复制 `content/gallery/cloud-file-map.example.json` 为本机的 `content/gallery/cloud-file-map.json`，保持 12 个键和键名完全不变，把每个占位符替换为对应 `logicalKey` 的 `cloud://` 文件 ID。这个真实映射已被 Git 忽略：不得提交、截图或粘贴到 issue、聊天或日志中。
+4. 在项目根目录运行 `node scripts/gallery/build-gallery-import.mjs --cloud-file-map content/gallery/cloud-file-map.json`。只有传入这个显式参数时，导入构建才会读取本地映射；生成的 `generated/gallery-import/patterns-import.json` 会只包含云文件 ID，不包含本地资源路径。
+5. 回到 HBuilderX 的 uniCloud Web 控制台，在云数据库中分别选择 `pindou-gallery-categories` 与 `pindou-gallery-patterns` 的数据导入：先导入 `generated/gallery-import/categories-import.json`，再导入 `generated/gallery-import/patterns-import.json`。这两个扩展名为 `.json` 的文件内容是 JSONL，每一行一个对象；uniCloud 接受这种格式，JSON 数组会被拒绝。
+6. 在云数据库中确认 `pindou-gallery-patterns` 恰好有 4 条 `content_id` 分别为 `inside-cute-dog-sign`、`delivery-block-door-sign`、`birthday-dog-cake-bouquet`、`farewell-fortune-sign` 的记录，并确认每条的卡片、详情预览和载荷字段均为 `cloud://` 文件 ID。

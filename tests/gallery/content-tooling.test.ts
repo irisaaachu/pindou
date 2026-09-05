@@ -1,12 +1,14 @@
+import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { buildGalleryImport } from "../../scripts/gallery/build-gallery-import.mjs";
+import { buildGalleryImport, resolveCloudAssetRefs } from "../../scripts/gallery/build-gallery-import.mjs";
 import { buildGalleryUploadManifest } from "../../scripts/gallery/build-gallery-upload-manifest.mjs";
 import { compareSemanticVersions, validateCatalog, validatePublishedCatalog } from "../../scripts/gallery/gallery-contract.mjs";
 
@@ -18,6 +20,15 @@ const invalidHashCatalog = JSON.parse(await readFile(resolve(fixtureDirectory, "
 const publishedCatalog = JSON.parse(await readFile(resolve(galleryContentDirectory, "catalog.json"), "utf8"));
 const expectedPilotMetadata = JSON.parse(await readFile(resolve(fixtureDirectory, "pilot-expected-metadata.json"), "utf8"));
 const temporaryDirectories: string[] = [];
+const execFileAsync = promisify(execFile);
+
+function cloudFileMap(catalog: typeof publishedCatalog): Record<string, string> {
+  return Object.fromEntries(catalog.patterns.flatMap((pattern: { id: string; version: string }) => [
+    [`gallery/${pattern.id}/${pattern.version}/payload`, `cloud://test-space/${pattern.id}/payload`],
+    [`gallery/${pattern.id}/${pattern.version}/card`, `cloud://test-space/${pattern.id}/card`],
+    [`gallery/${pattern.id}/${pattern.version}/detail`, `cloud://test-space/${pattern.id}/detail`],
+  ]));
+}
 
 async function readFixtureAsset(fileRef: string): Promise<string | null> {
   try {
@@ -152,6 +163,65 @@ describe("gallery content tooling", () => {
     ]));
     expect(JSON.stringify(manifest)).not.toMatch(/cloud:\/\//i);
     expect(manifest.assets.every((asset: { path: string }) => !asset.path.startsWith("/") && !asset.path.includes(".."))).toBe(true);
+  });
+
+  test("resolves every list, detail, and payload reference into the corresponding cloud file ID", async () => {
+    const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-import-"));
+    temporaryDirectories.push(outputDirectory);
+    const mapping = cloudFileMap(publishedCatalog);
+
+    const resolvedCatalog = resolveCloudAssetRefs(publishedCatalog, mapping);
+    const resolvedPattern = resolvedCatalog.patterns.find((pattern: { id: string }) => pattern.id === "inside-cute-dog-sign");
+    await buildGalleryImport(publishedCatalog, readPublishedAsset, outputDirectory, mapping);
+    const imports = (await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8")).trimEnd().split("\n").map((line) => JSON.parse(line));
+
+    expect(resolvedPattern).toMatchObject({
+      coverRef: "cloud://test-space/inside-cute-dog-sign/card",
+      previewRef: "cloud://test-space/inside-cute-dog-sign/detail",
+      payload: expect.objectContaining({ fileRef: "cloud://test-space/inside-cute-dog-sign/payload" }),
+    });
+    expect(imports).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        content_id: "inside-cute-dog-sign",
+        card_cover_ref: "cloud://test-space/inside-cute-dog-sign/card",
+        detail_preview_ref: "cloud://test-space/inside-cute-dog-sign/detail",
+        payload_file_ref: "cloud://test-space/inside-cute-dog-sign/payload",
+      }),
+    ]));
+    expect(JSON.stringify(imports)).not.toContain("previews/card/");
+    expect(JSON.stringify(imports)).not.toContain("previews/detail/");
+    expect(JSON.stringify(imports)).not.toContain("payloads/");
+  });
+
+  test.each([
+    ["missing logical keys", (mapping: Record<string, string>) => { delete mapping["gallery/inside-cute-dog-sign/1.0.0/payload"]; }, "Cloud file map does not match catalog assets."],
+    ["extra logical keys", (mapping: Record<string, string>) => { mapping["gallery/extra/1.0.0/payload"] = "cloud://test-space/extra/payload"; }, "Cloud file map does not match catalog assets."],
+    ["duplicate cloud IDs", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = mapping["gallery/inside-cute-dog-sign/1.0.0/card"]; }, "Cloud file map contains duplicate cloud file IDs."],
+    ["blank cloud IDs", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "   "; }, "Cloud file map contains blank cloud file IDs."],
+    ["non-cloud references", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "payloads/inside-cute-dog-sign-v1.json"; }, "Cloud file map contains non-cloud references."],
+    ["cloud IDs with whitespace-only suffixes", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "cloud://   "; }, "Cloud file map contains non-cloud references."],
+  ])("rejects %s without revealing mapped values", (_name, change, message) => {
+    const mapping = cloudFileMap(publishedCatalog);
+    change(mapping);
+
+    try {
+      resolveCloudAssetRefs(publishedCatalog, mapping);
+      throw new Error("Expected cloud file map resolution to fail.");
+    } catch (error) {
+      expect(error).toMatchObject({ message });
+    }
+  });
+
+  test("keeps the real cloud file map ignored and the copyable example account-safe", async () => {
+    const examplePath = "content/gallery/cloud-file-map.example.json";
+    const realMapPath = "content/gallery/cloud-file-map.json";
+    const example = JSON.parse(await readFile(resolve(repositoryRoot, examplePath), "utf8"));
+
+    await expect(execFileAsync("git", ["check-ignore", "--quiet", realMapPath], { cwd: repositoryRoot })).resolves.toBeDefined();
+    await expect(execFileAsync("git", ["check-ignore", "--quiet", examplePath], { cwd: repositoryRoot })).rejects.toMatchObject({ code: 1 });
+    await expect(execFileAsync("git", ["ls-files", "--error-unmatch", realMapPath], { cwd: repositoryRoot })).rejects.toMatchObject({ code: 1 });
+    expect(Object.keys(example).sort()).toEqual(Object.keys(cloudFileMap(publishedCatalog)).sort());
+    expect(Object.values(example)).not.toContainEqual(expect.stringMatching(/^cloud:\/\//));
   });
 
   test("uses one immutable database identity per content ID and version", async () => {

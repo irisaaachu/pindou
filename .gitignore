@@ -13,6 +13,7 @@ node_modules
 .DS_Store
 dist
 generated/gallery-import/*.json
+content/gallery/cloud-file-map.json
 *.local
 uniCloud-aliyun/cloudfunctions/common/uni-config-center/uni-id/config.json
 
