@@ -105,6 +105,8 @@ Implementation will make the smallest coherent changes to:
 - add tap-to-preview to the existing detail page;
 - update validators, deterministic fixtures and import metadata.
 
+This is a replacement, not a parallel renderer. The obsolete round-bead detail path, `showCoordinates` option, one-sided coordinate implementation, `pindou-soft-original` palette file and tests that assert the old detail geometry are removed. The round-bead drawing code is retained only inside the card renderer because cards still use it. No compatibility switch, unused export or duplicate palette remains after the regenerated assets and catalog have moved to MARD.
+
 Logical remote keys and the local ignored uniCloud mapping mechanism remain unchanged. After verification, the user uploads the twelve regenerated files and imports the rebuilt JSONL-in-`.json` records. No AppSecret, service-space ID, cloud file ID or account-bound configuration is committed.
 
 ## 10. Verification and acceptance
