@@ -11,7 +11,16 @@ import { loadPalette } from "../../scripts/gallery/grid-authoring.mjs";
 const payloadDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../content/gallery/payloads");
 const temporaryDirectories: string[] = [];
 
-const expectedPatterns = [
+type ExpectedPattern = {
+  id: string;
+  dimensions: [number, number];
+  regions: Array<{ id: string; defaultText: string; x: number; y: number }>;
+  intentionalBackground?: { x: number; y: number };
+  cornerCells?: Array<[number, number]>;
+  beadCount: number;
+};
+
+const expectedPatterns: ExpectedPattern[] = [
   {
     id: "inside-cute-dog-sign",
     dimensions: [58, 29],
@@ -82,10 +91,10 @@ describe("pilot gallery patterns", () => {
       expect(payload.editableTextRegions.every((region: { x: number; y: number }) => region.x >= 0 && region.x < payload.width && region.y >= 0 && region.y < payload.height)).toBe(true);
       expect(payload.cells.filter(Boolean)).toHaveLength(expected.beadCount);
 
-      if ("cornerCells" in expected) {
+      if (expected.cornerCells) {
         for (const [x, y] of expected.cornerCells) expect(payload.cells[y * payload.width + x]).toBeNull();
       }
-      if ("intentionalBackground" in expected) {
+      if (expected.intentionalBackground) {
         const { x, y } = expected.intentionalBackground;
         expect(payload.cells[y * payload.width + x]).not.toBeNull();
       }
