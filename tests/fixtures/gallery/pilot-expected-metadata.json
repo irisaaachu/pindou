@@ -1,0 +1,8 @@
+{
+  "patterns": [
+    { "id": "inside-cute-dog-sign", "name": "内有萌犬", "card": [464, 232], "detail": [1920, 992], "intentionalSingleCells": [] },
+    { "id": "delivery-block-door-sign", "name": "快递挡在门口", "card": [464, 232], "detail": [1920, 992], "intentionalSingleCells": [] },
+    { "id": "birthday-dog-cake-bouquet", "name": "生日小伙伴", "card": [232, 232], "detail": [992, 992], "intentionalSingleCells": [{ "x": 20, "y": 12, "colorId": "coral" }, { "x": 18, "y": 14, "colorId": "butter" }, { "x": 22, "y": 14, "colorId": "butter" }] },
+    { "id": "farewell-fortune-sign", "name": "脱离苦海 发大财", "card": [464, 232], "detail": [1920, 992], "intentionalSingleCells": [{ "x": 8, "y": 5, "colorId": "coral" }, { "x": 51, "y": 7, "colorId": "mint" }, { "x": 6, "y": 19, "colorId": "butter" }, { "x": 50, "y": 19, "colorId": "butter" }] }
+  ]
+}

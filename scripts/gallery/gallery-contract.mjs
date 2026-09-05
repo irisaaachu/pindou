@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
+import { PNG } from "pngjs";
 
 const categoryFields = ["id", "version", "slug", "name", "shortLabel", "quickEntry", "coverRef", "creator", "sourceType", "sourceReference", "licenseStatus", "reviewStatus", "acquiredAt", "publishStatus", "order"];
-const patternFields = ["id", "version", "name", "usageTags", "themeTags", "featureTags", "difficulty", "sizeClass", "coverRef", "previewRef", "payload", "width", "height", "physicalWidthMm", "physicalHeightMm", "palette", "direction", "colorCount", "beadCount", "recommendationWeight", "publishedAt", "creator", "sourceType", "sourceReference", "licenseStatus", "reviewStatus", "acquiredAt", "publishStatus", "order"];
+const patternFields = ["id", "version", "name", "usageTags", "themeTags", "featureTags", "difficulty", "sizeClass", "coverRef", "previewRef", "payload", "width", "height", "physicalWidthMm", "physicalHeightMm", "palette", "direction", "colorCount", "beadCount", "recommendationWeight", "publishedAt", "creator", "sourceType", "sourceReference", "licenseStatus", "reviewStatus", "acquiredAt", "publishStatus", "order", "intentionalSingleCells"];
 const provenanceFields = ["creator", "sourceType", "sourceReference", "licenseStatus", "reviewStatus", "acquiredAt", "publishStatus"];
 
 export async function validateCatalog(catalog, readAsset) {
@@ -41,13 +42,37 @@ export async function validateCatalog(catalog, readAsset) {
     } catch {
       asset = null;
     }
-    if (typeof asset !== "string") {
+    if (typeof asset !== "string" && !Buffer.isBuffer(asset)) {
       issue(issues, `${path}.payload.fileRef`, "Payload asset is missing.");
       continue;
     }
-    validatePayloadAsset(asset, pattern, `${path}.payload`, issues);
+    validatePayloadAsset(asset, pattern, `${path}.payload`, path, issues);
   }
 
+  return issues;
+}
+
+export async function validatePublishedCatalog(catalog, readAsset) {
+  const issues = await validateCatalog(catalog, readAsset);
+  if (!isRecord(catalog) || !Array.isArray(catalog.patterns)) return issues;
+  const expected = [
+    ["inside-cute-dog-sign", "内有萌犬", "door-sign", 58, 29],
+    ["delivery-block-door-sign", "快递挡在门口", "delivery-sign", 58, 29],
+    ["birthday-dog-cake-bouquet", "生日小伙伴", "birthday", 29, 29],
+    ["farewell-fortune-sign", "脱离苦海 发大财", "farewell", 58, 29],
+  ];
+  if (catalog.patterns.length !== expected.length) issue(issues, "patterns", "Published pilot catalog must contain exactly four patterns.");
+  for (const [index, [id, name, slug, width, height]] of expected.entries()) {
+    const pattern = catalog.patterns[index];
+    const path = `patterns[${index}]`;
+    if (!isRecord(pattern)) continue;
+    if (pattern.id !== id || pattern.name !== name || pattern.version !== "1.0.0") issue(issues, path, "Published pilot identity is invalid.");
+    if (!Array.isArray(pattern.usageTags) || pattern.usageTags.length !== 1 || pattern.usageTags[0] !== slug) issue(issues, `${path}.usageTags`, "Published pilot category is invalid.");
+    if (pattern.width !== width || pattern.height !== height) issue(issues, path, "Published pilot dimensions are invalid.");
+    if (pattern.creator !== "Pindou Studio" || pattern.sourceType !== "original" || pattern.licenseStatus !== "approved" || pattern.reviewStatus !== "approved" || pattern.publishStatus !== "published") issue(issues, path, "Published pilot provenance is invalid.");
+    await validatePreviewAsset(readAsset, pattern.coverRef, width * 8, height * 8, `${path}.coverRef`, issues);
+    await validatePreviewAsset(readAsset, pattern.previewRef, width * 32 + 64, height * 32 + 64, `${path}.previewRef`, issues);
+  }
   return issues;
 }
 
@@ -176,17 +201,20 @@ function validatePattern(pattern, path, issues, ids, categorySlugs) {
   validatePalette(pattern.palette, `${path}.palette`, issues);
   if (!['normal', 'reverse'].includes(pattern.direction)) issue(issues, `${path}.direction`, "Direction is invalid.");
   for (const field of ["colorCount", "beadCount", "recommendationWeight", "order"]) validateNonNegativeInteger(pattern[field], `${path}.${field}`, issues);
+  validateIntentionalSingleCells(pattern.intentionalSingleCells, `${path}.intentionalSingleCells`, issues);
   validateIsoTimestamp(pattern.publishedAt, `${path}.publishedAt`, issues);
   validateProvenance(pattern, path, issues);
 }
 
-function validatePayloadAsset(asset, pattern, path, issues) {
-  const bytes = Buffer.byteLength(asset, "utf8");
-  const digest = createHash("sha256").update(asset, "utf8").digest("hex");
+function validatePayloadAsset(asset, pattern, path, patternPath, issues) {
+  const raw = Buffer.isBuffer(asset) ? asset : Buffer.from(asset, "utf8");
+  const text = raw.toString("utf8");
+  const bytes = raw.byteLength;
+  const digest = createHash("sha256").update(raw).digest("hex");
   if (bytes !== pattern.payload.byteSize || digest !== pattern.payload.sha256) issue(issues, path, "Payload byte size or SHA-256 does not match.");
   let payload;
   try {
-    payload = JSON.parse(asset);
+    payload = JSON.parse(text);
   } catch {
     return issue(issues, path, "Payload must contain JSON.");
   }
@@ -201,9 +229,38 @@ function validatePayloadAsset(asset, pattern, path, issues) {
   validatePalette(payload.palette, `${path}.palette`, issues);
   if (isRecord(payload.palette) && isRecord(pattern.palette) && (payload.palette.id !== pattern.palette.id || payload.palette.version !== pattern.palette.version)) issue(issues, `${path}.palette`, "Payload palette does not match.");
   if (!Array.isArray(payload.cells) || payload.cells.length !== payload.width * payload.height) issue(issues, `${path}.cells`, "Payload cells do not match dimensions.");
-  else payload.cells.forEach((cell, index) => { if (cell !== null && !isNonEmptyString(cell)) issue(issues, `${path}.cells[${index}]`, "Payload cell is invalid."); });
+  else {
+    payload.cells.forEach((cell, index) => { if (cell !== null && !isNonEmptyString(cell)) issue(issues, `${path}.cells[${index}]`, "Payload cell is invalid."); });
+    const occupiedCells = payload.cells.filter((cell) => cell !== null);
+    const colorCount = new Set(occupiedCells).size;
+    if (pattern.colorCount !== colorCount) issue(issues, `${path}.colorCount`, "Color count does not match payload.");
+    if (pattern.beadCount !== occupiedCells.length) issue(issues, `${path}.beadCount`, "Bead count does not match payload.");
+    if (colorCount > 11) issue(issues, `${path}.colorCount`, "Pilot patterns may use at most eleven colors.");
+    const declared = new Set((pattern.intentionalSingleCells || []).map(({ x, y, colorId }) => `${x},${y}:${colorId}`));
+    const singleCells = findSingleColorComponents(payload.cells, payload.width, payload.height);
+    for (const singleCell of singleCells) {
+      if (!declared.delete(`${singleCell.x},${singleCell.y}:${singleCell.colorId}`)) issue(issues, `${patternPath}.intentionalSingleCells`, "Every one-cell color component must be declared.");
+    }
+    if (declared.size > 0) issue(issues, `${patternPath}.intentionalSingleCells`, "Declared intentional single cells must exist in the payload.");
+  }
   if (!['normal', 'reverse'].includes(payload.direction)) issue(issues, `${path}.direction`, "Payload direction is invalid.");
   validateTextRegions(payload.editableTextRegions, payload.width, payload.height, `${path}.editableTextRegions`, issues);
+}
+
+async function validatePreviewAsset(readAsset, fileRef, width, height, path, issues) {
+  let asset;
+  try {
+    asset = await readAsset(fileRef);
+  } catch {
+    asset = null;
+  }
+  if (!Buffer.isBuffer(asset)) return issue(issues, path, "Preview asset is missing or not binary.");
+  try {
+    const image = PNG.sync.read(asset);
+    if (image.width !== width || image.height !== height) issue(issues, path, "Preview dimensions do not match the grid.");
+  } catch {
+    issue(issues, path, "Preview must be a PNG.");
+  }
 }
 
 function validatePayloadDescriptor(payload, path, issues) {
@@ -213,6 +270,49 @@ function validatePayloadDescriptor(payload, path, issues) {
   if (payload.formatVersion !== 1) issue(issues, `${path}.formatVersion`, "Payload format version is unsupported.");
   validateNonNegativeInteger(payload.byteSize, `${path}.byteSize`, issues);
   if (typeof payload.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(payload.sha256)) issue(issues, `${path}.sha256`, "Payload SHA-256 is invalid.");
+}
+
+function validateIntentionalSingleCells(cells, path, issues) {
+  if (cells === undefined) return;
+  if (!Array.isArray(cells)) return issue(issues, path, "Intentional single cells must be an array.");
+  const seen = new Set();
+  cells.forEach((cell, index) => {
+    const cellPath = `${path}[${index}]`;
+    if (!isRecord(cell)) return issue(issues, cellPath, "Intentional single cell must be an object.");
+    validateFields(cell, ["x", "y", "colorId"], cellPath, issues);
+    if (!Number.isInteger(cell.x) || cell.x < 0 || !Number.isInteger(cell.y) || cell.y < 0 || !isNonEmptyString(cell.colorId)) issue(issues, cellPath, "Intentional single cell is invalid.");
+    const key = `${cell.x},${cell.y}:${cell.colorId}`;
+    if (seen.has(key)) issue(issues, cellPath, "Intentional single cells must be unique.");
+    seen.add(key);
+  });
+}
+
+function findSingleColorComponents(cells, width, height) {
+  const seen = new Set();
+  const singles = [];
+  cells.forEach((colorId, origin) => {
+    if (colorId === null || seen.has(origin)) return;
+    const queue = [origin];
+    const component = [];
+    seen.add(origin);
+    for (let index = 0; index < queue.length; index += 1) {
+      const cellIndex = queue[index];
+      component.push(cellIndex);
+      const x = cellIndex % width;
+      const y = Math.floor(cellIndex / width);
+      for (const [deltaX, deltaY] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nextX = x + deltaX;
+        const nextY = y + deltaY;
+        const nextIndex = nextY * width + nextX;
+        if (nextX >= 0 && nextX < width && nextY >= 0 && nextY < height && cells[nextIndex] === colorId && !seen.has(nextIndex)) {
+          seen.add(nextIndex);
+          queue.push(nextIndex);
+        }
+      }
+    }
+    if (component.length === 1) singles.push({ x: origin % width, y: Math.floor(origin / width), colorId });
+  });
+  return singles;
 }
 
 function validateTextRegions(regions, width, height, path, issues) {
@@ -268,7 +368,7 @@ function validateFields(record, allowed, path, issues) {
   allowed.filter((key) => !optionalFields.has(key) && record[key] === undefined).forEach((key) => issue(issues, path ? `${path}.${key}` : key, "Field is required."));
 }
 
-const optionalFields = new Set(["coverRef", "sourceReference"]);
+const optionalFields = new Set(["coverRef", "sourceReference", "intentionalSingleCells"]);
 
 function validateNonEmptyString(value, path, issues) { if (!isNonEmptyString(value)) issue(issues, path, "Value must be a non-empty string."); }
 function validateOptionalString(value, path, issues) { if (value !== undefined && !isNonEmptyString(value)) issue(issues, path, "Value must be a non-empty string."); }
