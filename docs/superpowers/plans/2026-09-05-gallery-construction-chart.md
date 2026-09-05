@@ -384,7 +384,7 @@ git commit -m "feat(gallery): add native chart zoom"
 - Consumes: all prior task deliverables.
 - Produces: verified commit and tag `milestone-07.1-construction-charts` pushed to `origin/main`.
 
-- [ ] **Step 1: Prove obsolete code and files are gone**
+- [x] **Step 1: Prove obsolete code and files are gone**
 
 Run: `rg -n "pindou-soft-original|PilotColorId|renderPatternPng|showCoordinates|coordinateMargin" content scripts tests src`
 
@@ -394,7 +394,7 @@ Run: `git status --short`
 
 Expected: only intended Milestone 7.1 changes plus the user's pre-existing local `src/manifest.json`, `.hbuilderx/` and `.superpowers/` entries.
 
-- [ ] **Step 2: Run the complete automated gate**
+- [x] **Step 2: Run the complete automated gate**
 
 Run: `npm run check`
 
@@ -406,7 +406,7 @@ Expected: all tests, lint, type checking, gallery validation, cloud validation, 
 
 Review against the specification, with special attention to payload/legend consistency, exact PNG geometry, reverse non-mutation, license attribution, removed legacy paths, native preview and protected local files. Re-run the smallest failing test after each fix, then repeat Step 2.
 
-- [ ] **Step 4: Record verification and commit any direct fixes**
+- [x] **Step 4: Record verification and commit any direct fixes**
 
 Update the milestone verification record with exact command results and the manual WeChat checklist. If this creates tracked changes:
 
@@ -416,6 +416,14 @@ git commit -m "docs: record milestone 7.1 verification"
 ```
 
 Before committing, inspect `git diff --cached --name-only` and unstage any protected local file.
+
+#### Verification record — 2026-09-05
+
+- `rg -n "pindou-soft-original|PilotColorId|renderPatternPng|showCoordinates|coordinateMargin" content scripts tests src` returned no active references. The names remain only in historical design/plan prose that documents their intended removal.
+- `npm run check` exited `0`: 28 Vitest files / 314 tests passed, followed by lint, type checking, gallery validation, cloud validation and the WeChat build.
+- `npm run build:h5` exited `0` and produced the H5 build.
+- `git diff --check` exited `0`; before this record was added, `git status --short` was clean. No protected local configuration or account-bound cloud mapping was changed.
+- Real WeChat acceptance is pending: run the `mp-weixin` build in HBuilderX, inspect each of the four chart previews at maximum zoom for readable codes, coordinates, blank cells, legends and console errors. Do not upload cloud assets or import records until the user confirms 64-pixel cells are clear enough.
 
 - [ ] **Step 5: Tag and push the completed milestone**
 
