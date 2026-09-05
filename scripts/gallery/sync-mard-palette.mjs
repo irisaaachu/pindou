@@ -41,7 +41,10 @@ function freezePalette(palette) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  if (process.argv.length > 3) throw new Error("Usage: node scripts/gallery/sync-mard-palette.mjs [csv-path]");
+  if (process.argv.length > 4) throw new Error("Usage: node scripts/gallery/sync-mard-palette.mjs [csv-path] [output-path]");
   const sourcePath = process.argv[2] ?? defaultSourcePath;
-  writeFileSync(outputPath, `${JSON.stringify(syncMardPalette(readFileSync(sourcePath, "utf8")), null, 2)}\n`, "utf8");
+  const destinationPath = process.argv[3] ?? outputPath;
+  const palette = syncMardPalette(readFileSync(sourcePath, "utf8"));
+  if (Object.keys(palette.colors).length !== 221) throw new Error("MARD palette must contain exactly 221 colors before writing.");
+  writeFileSync(destinationPath, `${JSON.stringify(palette, null, 2)}\n`, "utf8");
 }

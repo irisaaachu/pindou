@@ -1,9 +1,12 @@
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 
 import { loadPalette } from "../../scripts/gallery/grid-authoring.mjs";
 import { syncMardPalette } from "../../scripts/gallery/sync-mard-palette.mjs";
@@ -11,6 +14,13 @@ import { syncMardPalette } from "../../scripts/gallery/sync-mard-palette.mjs";
 const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const sourcePath = resolve(rootDirectory, "content/gallery/palettes/sources/mard-291-29229889.csv");
 const registryPath = resolve(rootDirectory, "content/gallery/palettes/mard-221-v2026.09.json");
+const syncScriptPath = resolve(rootDirectory, "scripts/gallery/sync-mard-palette.mjs");
+const temporaryDirectories: string[] = [];
+const execFileAsync = promisify(execFile);
+
+afterEach(async () => {
+  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { force: true, recursive: true })));
+});
 
 describe("MARD 221 palette", () => {
   test("loads the pinned 221-color registry with its source identity", () => {
@@ -51,5 +61,25 @@ describe("MARD 221 palette", () => {
     expect(Object.keys(syncMardPalette(source.toString("utf8")).colors)).toHaveLength(221);
     expect(derived).toEqual(registry);
     expect(createHash("sha256").update(registry).digest("hex")).toBe("a2967312ba1a8e091217cb10293425fe4528927ed519dfd7861ca9ace3a2d85a");
+  });
+
+  test("pins the source CSV to LF checkouts", async () => {
+    const relativeSourcePath = "content/gallery/palettes/sources/mard-291-29229889.csv";
+    const { stdout } = await execFileAsync("git", ["check-attr", "eol", "--", relativeSourcePath], { cwd: rootDirectory });
+
+    expect(stdout.trim()).toBe(`${relativeSourcePath}: eol: lf`);
+  });
+
+  test("rejects a non-221 CLI derivation before writing output", async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), "mard-palette-"));
+    temporaryDirectories.push(directory);
+    const incompleteSourcePath = resolve(directory, "incomplete.csv");
+    const destinationPath = resolve(directory, "mard.json");
+    await writeFile(incompleteSourcePath, "A1,White,255,255,255,Test\n", "utf8");
+
+    await expect(execFileAsync(process.execPath, [syncScriptPath, incompleteSourcePath, destinationPath], { cwd: rootDirectory })).rejects.toMatchObject({
+      stderr: expect.stringContaining("exactly 221 colors"),
+    });
+    await expect(readFile(destinationPath)).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

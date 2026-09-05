@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, test } from "vitest";
@@ -15,6 +16,7 @@ const legendItemWidth = 256;
 const legendItemHeight = 128;
 const legendColumnGap = 32;
 const legendRowGap = 24;
+const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const glyphs: Record<string, readonly string[]> = {
   "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
   "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
@@ -292,16 +294,30 @@ describe("pattern PNG renderer", () => {
     expect(() => renderConstructionChartPng({ width: 1, height: 1, direction: "sideways" as never, cells: [null] }, palette)).toThrow("Chart direction must be normal or reverse.");
   });
 
-  test("builds card and construction-chart files through the explicit render paths", async () => {
+  test("reproduces all four committed cards and construction charts byte-for-byte at their exact dimensions", async () => {
     const outputDirectory = await mkdtemp(resolve(tmpdir(), "pilot-previews-"));
     temporaryDirectories.push(outputDirectory);
     await buildPilotContent({ payloadRoot: resolve(outputDirectory, "payloads"), previewRoot: outputDirectory });
 
-    const [card, detail] = await Promise.all([
-      readFile(resolve(outputDirectory, "card", "inside-cute-dog-sign-v1.png")),
-      readFile(resolve(outputDirectory, "detail", "inside-cute-dog-sign-v1.png")),
-    ]);
-    expect(decode(card)).toMatchObject({ width: 464, height: 232 });
-    expect(decode(detail)).toMatchObject({ width: 3840, height: 2240 });
+    const expectedArtifacts = [
+      { id: "inside-cute-dog-sign", card: [464, 232], detail: [3840, 2240] },
+      { id: "delivery-block-door-sign", card: [464, 232], detail: [3840, 2240] },
+      { id: "birthday-dog-cake-bouquet", card: [232, 232], detail: [1984, 2392] },
+      { id: "farewell-fortune-sign", card: [464, 232], detail: [3840, 2240] },
+    ];
+    for (const expected of expectedArtifacts) {
+      const fileName = `${expected.id}-v1.png`;
+      const [generatedCard, committedCard, generatedDetail, committedDetail] = await Promise.all([
+        readFile(resolve(outputDirectory, "card", fileName)),
+        readFile(resolve(rootDirectory, "content/gallery/previews/card", fileName)),
+        readFile(resolve(outputDirectory, "detail", fileName)),
+        readFile(resolve(rootDirectory, "content/gallery/previews/detail", fileName)),
+      ]);
+
+      expect(generatedCard).toEqual(committedCard);
+      expect(generatedDetail).toEqual(committedDetail);
+      expect(decode(generatedCard)).toMatchObject({ width: expected.card[0], height: expected.card[1] });
+      expect(decode(generatedDetail)).toMatchObject({ width: expected.detail[0], height: expected.detail[1] });
+    }
   }, 30_000);
 });

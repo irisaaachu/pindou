@@ -1,6 +1,7 @@
 content/gallery/payloads/*.json text eol=lf
 tests/fixtures/gallery/payloads/*.json text eol=lf
 content/gallery/palettes/*.json text eol=lf
+content/gallery/palettes/sources/*.csv text eol=lf
 content/gallery/glyphs/*.json text eol=lf
 scripts/gallery/grid-authoring.mjs text eol=lf
 scripts/gallery/grid-authoring.d.mts text eol=lf
