@@ -42,16 +42,14 @@ describe("MARD 221 palette", () => {
     expect(() => syncMardPalette("A2,Amber,256,2,3,Asher\n")).toThrow(/rgb/i);
   });
 
-  test("derives 221 colors from the complete pinned 291-row source", async () => {
-    const source = await readFile(sourcePath, "utf8");
+  test("reproduces the committed registry from the complete pinned source", async () => {
+    const [source, registry] = await Promise.all([readFile(sourcePath), readFile(registryPath)]);
+    const derived = Buffer.from(`${JSON.stringify(syncMardPalette(source.toString("utf8")), null, 2)}\n`);
 
-    expect(source.trim().split("\n")).toHaveLength(291);
-    expect(Object.keys(syncMardPalette(source).colors)).toHaveLength(221);
-  });
-
-  test("matches the committed canonical registry bytes", async () => {
-    const registry = await readFile(registryPath);
-
+    expect(createHash("sha256").update(source).digest("hex")).toBe("623d229ace064a7ace700489ed98fa35e512300a574d9df2d94c7d01d5114dfa");
+    expect(source.toString("utf8").trim().split("\n")).toHaveLength(291);
+    expect(Object.keys(syncMardPalette(source.toString("utf8")).colors)).toHaveLength(221);
+    expect(derived).toEqual(registry);
     expect(createHash("sha256").update(registry).digest("hex")).toBe("a2967312ba1a8e091217cb10293425fe4528927ed519dfd7861ca9ace3a2d85a");
   });
 });
