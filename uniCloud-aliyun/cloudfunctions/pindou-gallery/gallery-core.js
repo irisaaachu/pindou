@@ -161,7 +161,7 @@ function projectPatternDetail(record) {
     direction: record.default_direction,
     colorCount: record.color_count,
     beadCount: record.bead_count,
-    editableTextRegions: record.editable_text_regions || [],
+    editableTextRegions: projectEditableTextRegions(record.editable_text_regions),
     creator: record.creator,
     sourceType: record.source_type,
     sourceReference: record.source_reference,
@@ -172,6 +172,20 @@ function projectPatternDetail(record) {
       sha256: record.payload_sha256,
     },
   });
+}
+
+function projectEditableTextRegions(regions) {
+  if (!Array.isArray(regions)) return [];
+  return regions.map((region) => ({
+    id: region.id,
+    defaultText: region.default_text,
+    x: region.x,
+    y: region.y,
+    fontId: region.font_id,
+    size: region.size,
+    colorId: region.color_id,
+    maxLength: region.max_length,
+  }));
 }
 
 function normalizeTags(value) {

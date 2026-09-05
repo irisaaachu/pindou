@@ -103,7 +103,7 @@ describe("gallery content tooling", () => {
     const obsoletePatterns = resolve(outputDirectory, "patterns.json");
     await Promise.all([writeFile(obsoleteCategories, "obsolete", "utf8"), writeFile(obsoletePatterns, "obsolete", "utf8")]);
 
-    await buildGalleryImport(publishedCatalog, readPublishedAsset, outputDirectory);
+    await buildGalleryImport(publishedCatalog, readPublishedAsset, outputDirectory, cloudFileMap(publishedCatalog));
     const categories = await readFile(resolve(outputDirectory, "categories-import.json"), "utf8");
     const patterns = await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8");
     const categoryLines = categories.trimEnd().split("\n");
@@ -193,6 +193,43 @@ describe("gallery content tooling", () => {
     expect(JSON.stringify(imports)).not.toContain("payloads/");
   });
 
+  test("requires a cloud file map before building a non-empty pattern import", async () => {
+    const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-import-"));
+    temporaryDirectories.push(outputDirectory);
+
+    await expect(buildGalleryImport(publishedCatalog, readPublishedAsset, outputDirectory)).rejects.toThrow(
+      "Cloud file map is required for non-empty pattern imports.",
+    );
+  });
+
+  test("removes stale current imports before a mapped build fails", async () => {
+    const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-import-"));
+    temporaryDirectories.push(outputDirectory);
+    const categoryPath = resolve(outputDirectory, "categories-import.json");
+    const patternPath = resolve(outputDirectory, "patterns-import.json");
+    await Promise.all([
+      writeFile(categoryPath, '{"stale":true}\n', "utf8"),
+      writeFile(patternPath, '{"stale":true}\n', "utf8"),
+    ]);
+    const mapping = cloudFileMap(publishedCatalog);
+    delete mapping["gallery/inside-cute-dog-sign/1.0.0/payload"];
+
+    await expect(buildGalleryImport(publishedCatalog, readPublishedAsset, outputDirectory, mapping)).rejects.toThrow(
+      "Cloud file map does not match catalog assets.",
+    );
+    await expect(readFile(categoryPath, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(patternPath, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  test("keeps an empty pattern import as a zero-byte bootstrap artifact", async () => {
+    const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-import-"));
+    temporaryDirectories.push(outputDirectory);
+
+    await buildGalleryImport({ ...validCatalog, patterns: [] }, readFixtureAsset, outputDirectory);
+
+    expect(await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8")).toBe("");
+  });
+
   test.each([
     ["missing logical keys", (mapping: Record<string, string>) => { delete mapping["gallery/inside-cute-dog-sign/1.0.0/payload"]; }, "Cloud file map does not match catalog assets."],
     ["extra logical keys", (mapping: Record<string, string>) => { mapping["gallery/extra/1.0.0/payload"] = "cloud://test-space/extra/payload"; }, "Cloud file map does not match catalog assets."],
@@ -200,6 +237,10 @@ describe("gallery content tooling", () => {
     ["blank cloud IDs", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "   "; }, "Cloud file map contains blank cloud file IDs."],
     ["non-cloud references", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "payloads/inside-cute-dog-sign-v1.json"; }, "Cloud file map contains non-cloud references."],
     ["cloud IDs with whitespace-only suffixes", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "cloud://   "; }, "Cloud file map contains non-cloud references."],
+    ["cloud IDs with leading whitespace", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = " cloud://test-space/inside-cute-dog-sign/payload"; }, "Cloud file map contains non-cloud references."],
+    ["cloud IDs with trailing whitespace", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "cloud://test-space/inside-cute-dog-sign/payload "; }, "Cloud file map contains non-canonical cloud file IDs."],
+    ["cloud IDs with embedded whitespace", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "cloud://test-space/inside cute dog/payload"; }, "Cloud file map contains non-canonical cloud file IDs."],
+    ["cloud IDs with control characters", (mapping: Record<string, string>) => { mapping["gallery/inside-cute-dog-sign/1.0.0/payload"] = "cloud://test-space/inside-cute-dog-sign/\u0000payload"; }, "Cloud file map contains non-canonical cloud file IDs."],
   ])("rejects %s without revealing mapped values", (_name, change, message) => {
     const mapping = cloudFileMap(publishedCatalog);
     change(mapping);
@@ -227,10 +268,11 @@ describe("gallery content tooling", () => {
   test("uses one immutable database identity per content ID and version", async () => {
     const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-import-"));
     temporaryDirectories.push(outputDirectory);
-    await buildGalleryImport(validCatalog, readFixtureAsset, outputDirectory);
+    const mapping = cloudFileMap(validCatalog);
+    await buildGalleryImport(validCatalog, readFixtureAsset, outputDirectory, mapping);
     const first = JSON.parse((await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8")).trim());
     const changed = { ...validCatalog, patterns: [{ ...validCatalog.patterns[0], name: "Conflicting name" }] };
-    await buildGalleryImport(changed, readFixtureAsset, outputDirectory);
+    await buildGalleryImport(changed, readFixtureAsset, outputDirectory, mapping);
     const conflict = JSON.parse((await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8")).trim());
 
     expect(conflict._id).toBe(first._id);

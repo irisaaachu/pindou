@@ -2,7 +2,7 @@
   "bsonType": "object",
   "description": "Published gallery pattern metadata and external payload descriptor",
   "additionalProperties": false,
-  "required": ["content_id", "version", "name", "description", "usage_tags", "theme_tags", "feature_tags", "difficulty", "size_class", "card_cover_ref", "detail_preview_ref", "payload_file_ref", "payload_format_version", "payload_byte_size", "payload_sha256", "grid_width", "grid_height", "physical_width_mm", "physical_height_mm", "palette_id", "palette_version", "default_direction", "color_count", "bead_count", "recommendation_weight", "published_at", "creator", "source_type", "license_status", "review_status", "acquired_at", "publish_status", "order"],
+  "required": ["content_id", "version", "name", "description", "usage_tags", "theme_tags", "feature_tags", "difficulty", "size_class", "card_cover_ref", "detail_preview_ref", "payload_file_ref", "payload_format_version", "payload_byte_size", "payload_sha256", "grid_width", "grid_height", "physical_width_mm", "physical_height_mm", "palette_id", "palette_version", "default_direction", "color_count", "bead_count", "editable_text_regions", "recommendation_weight", "published_at", "creator", "source_type", "license_status", "review_status", "acquired_at", "publish_status", "order"],
   "permission": {
     "read": false,
     "create": false,
@@ -35,6 +35,25 @@
     "default_direction": { "bsonType": "string", "enum": ["normal", "reverse"] },
     "color_count": { "bsonType": "int", "minimum": 0 },
     "bead_count": { "bsonType": "int", "minimum": 0 },
+    "editable_text_regions": {
+      "bsonType": "array",
+      "arrayType": "object",
+      "items": {
+        "bsonType": "object",
+        "additionalProperties": false,
+        "required": ["id", "default_text", "x", "y", "font_id", "size", "color_id", "max_length"],
+        "properties": {
+          "id": { "bsonType": "string" },
+          "default_text": { "bsonType": "string" },
+          "x": { "bsonType": "int", "minimum": 0 },
+          "y": { "bsonType": "int", "minimum": 0 },
+          "font_id": { "bsonType": "string" },
+          "size": { "bsonType": "int", "minimum": 1 },
+          "color_id": { "bsonType": "string" },
+          "max_length": { "bsonType": "int", "minimum": 1 }
+        }
+      }
+    },
     "recommendation_weight": { "bsonType": "int", "minimum": 0 },
     "published_at": { "bsonType": "timestamp" },
     "creator": { "bsonType": "string" },

@@ -130,7 +130,7 @@ export function toCategoryImport(category) {
   });
 }
 
-export function toPatternImport(pattern) {
+export function toPatternImport(pattern, editableTextRegions) {
   return removeUndefined({
     content_id: pattern.id,
     version: pattern.version,
@@ -156,6 +156,16 @@ export function toPatternImport(pattern) {
     default_direction: pattern.direction,
     color_count: pattern.colorCount,
     bead_count: pattern.beadCount,
+    editable_text_regions: editableTextRegions.map((region) => ({
+      id: region.id,
+      default_text: region.defaultText,
+      x: region.x,
+      y: region.y,
+      font_id: region.fontId,
+      size: region.size,
+      color_id: region.colorId,
+      max_length: region.maxLength,
+    })),
     recommendation_weight: pattern.recommendationWeight,
     published_at: pattern.publishedAt,
     creator: pattern.creator,

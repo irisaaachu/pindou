@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,6 +26,9 @@ export function resolveCloudAssetRefs(catalog, mapping) {
   if (values.some((value) => !value.startsWith("cloud://") || value.slice("cloud://".length).trim() === "")) {
     throw new Error("Cloud file map contains non-cloud references.");
   }
+  if (values.some((value) => /[\s\p{Cc}]/u.test(value))) {
+    throw new Error("Cloud file map contains non-canonical cloud file IDs.");
+  }
   if (new Set(values).size !== values.length) throw new Error("Cloud file map contains duplicate cloud file IDs.");
 
   return {
@@ -43,21 +46,47 @@ export function resolveCloudAssetRefs(catalog, mapping) {
 }
 
 export async function buildGalleryImport(catalog, readAsset, outputDirectory, cloudFileMap) {
-  const issues = await validateCatalog(catalog, readAsset);
-  if (issues.length > 0) throw new Error(`Gallery catalog is invalid:\n${issues.map(({ path, message }) => `${path}: ${message}`).join("\n")}`);
-  const categories = catalog.categories.slice().sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)).map((item) => ({ _id: `gallery-category:${item.id}@${item.version}`, ...toCategoryImport(item) }));
-  const importCatalog = cloudFileMap === undefined ? catalog : resolveCloudAssetRefs(catalog, cloudFileMap);
-  const patterns = importCatalog.patterns.slice().sort((left, right) => left.id.localeCompare(right.id) || compareSemanticVersions(left.version, right.version)).map((item) => ({ _id: `gallery-pattern:${item.id}@${item.version}`, ...toPatternImport(item) }));
   await mkdir(outputDirectory, { recursive: true });
   const obsoleteCategoryPath = resolve(outputDirectory, "categories.json");
   const obsoletePatternPath = resolve(outputDirectory, "patterns.json");
   const categoryPath = resolve(outputDirectory, "categories-import.json");
   const patternPath = resolve(outputDirectory, "patterns-import.json");
-  await Promise.all([rm(obsoleteCategoryPath, { force: true }), rm(obsoletePatternPath, { force: true })]);
-  await Promise.all([
-    writeFile(categoryPath, writeJsonLines(categories), "utf8"),
-    writeFile(patternPath, writeJsonLines(patterns), "utf8"),
-  ]);
+  const stagedCategoryPath = resolve(outputDirectory, ".categories-import.json.tmp");
+  const stagedPatternPath = resolve(outputDirectory, ".patterns-import.json.tmp");
+  const outputPaths = [obsoleteCategoryPath, obsoletePatternPath, categoryPath, patternPath, stagedCategoryPath, stagedPatternPath];
+  await Promise.all(outputPaths.map((path) => rm(path, { force: true })));
+
+  const assetCache = new Map();
+  const readCachedAsset = async (fileRef) => {
+    if (!assetCache.has(fileRef)) assetCache.set(fileRef, await readAsset(fileRef));
+    return assetCache.get(fileRef);
+  };
+  const issues = await validateCatalog(catalog, readCachedAsset);
+  if (issues.length > 0) throw new Error(`Gallery catalog is invalid:\n${issues.map(({ path, message }) => `${path}: ${message}`).join("\n")}`);
+  const categories = catalog.categories.slice().sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)).map((item) => ({ _id: `gallery-category:${item.id}@${item.version}`, ...toCategoryImport(item) }));
+  if (catalog.patterns.length > 0 && cloudFileMap === undefined) {
+    throw new Error("Cloud file map is required for non-empty pattern imports.");
+  }
+  const importCatalog = cloudFileMap === undefined ? catalog : resolveCloudAssetRefs(catalog, cloudFileMap);
+  const editableTextRegions = new Map(catalog.patterns.map((pattern) => [
+    `${pattern.id}@${pattern.version}`,
+    parsePayload(assetCache.get(pattern.payload.fileRef)).editableTextRegions,
+  ]));
+  const patterns = importCatalog.patterns.slice().sort((left, right) => left.id.localeCompare(right.id) || compareSemanticVersions(left.version, right.version)).map((item) => ({
+    _id: `gallery-pattern:${item.id}@${item.version}`,
+    ...toPatternImport(item, editableTextRegions.get(`${item.id}@${item.version}`)),
+  }));
+  try {
+    await Promise.all([
+      writeFile(stagedCategoryPath, writeJsonLines(categories), "utf8"),
+      writeFile(stagedPatternPath, writeJsonLines(patterns), "utf8"),
+    ]);
+    await rename(stagedCategoryPath, categoryPath);
+    await rename(stagedPatternPath, patternPath);
+  } catch (error) {
+    await Promise.all([categoryPath, patternPath, stagedCategoryPath, stagedPatternPath].map((path) => rm(path, { force: true })));
+    throw error;
+  }
 }
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -95,6 +124,10 @@ async function readCloudFileMap(arguments_) {
 
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parsePayload(asset) {
+  return JSON.parse(Buffer.isBuffer(asset) ? asset.toString("utf8") : asset);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

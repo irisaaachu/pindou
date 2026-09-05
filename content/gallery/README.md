@@ -1,6 +1,6 @@
 # Gallery content catalog
 
-`catalog.json` is the local source for approved gallery categories and patterns. Run `npm run validate:gallery` before building an import bundle, then run `npm run build:gallery-import` to produce local JSON files for the two gallery collections.
+`catalog.json` is the local source for approved gallery categories and patterns. Run `npm run validate:gallery` before building an import bundle, then run `node scripts/gallery/build-gallery-import.mjs --cloud-file-map content/gallery/cloud-file-map.json` to produce cloud-safe local JSON files for the two gallery collections. A non-empty pattern catalog is never packaged without the complete ignored cloud-file mapping.
 
 Every category and pattern requires a semantic version, creator, source type, license status, review status, acquisition date and publish status. Published records require both license and review approval. Pattern `usageTags` must reference a category slug. Pattern payloads live below this directory, are UTF-8 JSON assets, and must match their declared byte size and lowercase SHA-256 digest.
 

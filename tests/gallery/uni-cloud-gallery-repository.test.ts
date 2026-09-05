@@ -1,24 +1,38 @@
-import { readFileSync } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
   createUniCloudGalleryPayloadSource,
   createUniCloudGalleryRepository,
   type GalleryCloudDependencies,
 } from "../../src/adapters/gallery";
-import { resolveCloudAssetRefs } from "../../scripts/gallery/build-gallery-import.mjs";
-import { toPatternImport } from "../../scripts/gallery/gallery-contract.mjs";
+import { buildGalleryImport } from "../../scripts/gallery/build-gallery-import.mjs";
 
 const require = createRequire(import.meta.url);
 const { projectPatternDetail } = require(resolve(process.cwd(), "uniCloud-aliyun/cloudfunctions/pindou-gallery/gallery-core.js")) as {
   projectPatternDetail(record: unknown): unknown;
 };
-const pilotCatalog = JSON.parse(readFileSync(resolve(process.cwd(), "content/gallery/catalog.json"), "utf8")) as {
+const galleryContentDirectory = resolve(process.cwd(), "content/gallery");
+const pilotCatalog = JSON.parse(await readFile(resolve(galleryContentDirectory, "catalog.json"), "utf8")) as {
   patterns: Array<{ id: string; version: string }>;
 };
+const temporaryDirectories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { force: true, recursive: true })));
+});
+
+async function readPublishedAsset(fileRef: string): Promise<Buffer | null> {
+  try {
+    return await readFile(resolve(galleryContentDirectory, fileRef));
+  } catch {
+    return null;
+  }
+}
 
 const payloadDescriptor = {
   fileRef: "https://temporary.example/tiny-heart.json",
@@ -76,24 +90,51 @@ function dependencies(overrides: Partial<GalleryCloudDependencies> = {}): Galler
 }
 
 describe("uniCloud gallery repository", () => {
-  test("accepts a production pilot detail after its cloud asset references are resolved", async () => {
+  test("carries exact pilot editable-text summaries from mapped import through cloud projection to client detail", async () => {
+    const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-detail-import-"));
+    temporaryDirectories.push(outputDirectory);
     const cloudFileMap = Object.fromEntries(pilotCatalog.patterns.flatMap((pattern) => [
       [`gallery/${pattern.id}/${pattern.version}/payload`, `cloud://test-space/${pattern.id}/payload`],
       [`gallery/${pattern.id}/${pattern.version}/card`, `cloud://test-space/${pattern.id}/card`],
       [`gallery/${pattern.id}/${pattern.version}/detail`, `cloud://test-space/${pattern.id}/detail`],
     ]));
-    const productionPattern = resolveCloudAssetRefs(pilotCatalog, cloudFileMap).patterns[0];
-    const detail = projectPatternDetail(toPatternImport(productionPattern));
-    const deps = dependencies({ getPattern: vi.fn(async () => ({ ok: true, data: detail })) });
-
-    await expect(createUniCloudGalleryRepository(deps).getPattern(productionPattern.id)).resolves.toMatchObject({
-      ok: true,
-      data: expect.objectContaining({
-        id: "inside-cute-dog-sign",
-        name: "内有萌犬",
-        previewRef: "cloud://test-space/inside-cute-dog-sign/detail",
-      }),
+    await buildGalleryImport(pilotCatalog, readPublishedAsset, outputDirectory, cloudFileMap);
+    const imports = (await readFile(resolve(outputDirectory, "patterns-import.json"), "utf8"))
+      .trimEnd()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    const importedInsideDog = imports.find((record) => record.content_id === "inside-cute-dog-sign");
+    expect(importedInsideDog).toMatchObject({
+      editable_text_regions: [{
+        id: "message",
+        default_text: "内有萌犬",
+        x: 27,
+        y: 3,
+        font_id: "pindou-hanzi-12",
+        size: 12,
+        color_id: "charcoal",
+        max_length: 4,
+      }],
     });
+
+    const clientDetails = await Promise.all(imports.map(async (record) => {
+      const projected = projectPatternDetail(record);
+      const deps = dependencies({ getPattern: vi.fn(async () => ({ ok: true, data: projected })) });
+      const result = await createUniCloudGalleryRepository(deps).getPattern(record.content_id);
+      if (!result.ok || !result.data) throw new Error(`Expected valid detail for ${record.content_id}`);
+      return result.data;
+    }));
+
+    expect(Object.fromEntries(clientDetails.map((detail) => [detail.id, {
+      count: detail.editableTextRegions.length,
+      hasEditableText: detail.hasEditableText,
+    }]))).toEqual({
+      "birthday-dog-cake-bouquet": { count: 0, hasEditableText: false },
+      "delivery-block-door-sign": { count: 1, hasEditableText: true },
+      "farewell-fortune-sign": { count: 2, hasEditableText: true },
+      "inside-cute-dog-sign": { count: 1, hasEditableText: true },
+    });
+    expect(JSON.stringify(clientDetails)).not.toContain("\"cells\"");
   });
 
   test("maps validated public category envelopes without consulting identity state", async () => {
