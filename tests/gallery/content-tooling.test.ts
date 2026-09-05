@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
@@ -48,6 +49,14 @@ async function readPublishedAsset(fileRef: string): Promise<Buffer | null> {
 
 function validationPaths(catalog: unknown): Promise<string[]> {
   return validateCatalog(catalog, readFixtureAsset).then((issues) => issues.map((issue) => issue.path));
+}
+
+function expectedConstructionChartDimensions(width: number, height: number, colorCount: number): [number, number] {
+  const canvasWidth = width * 64 + 128;
+  const columns = Math.max(1, Math.floor((canvasWidth - 128 + 32) / 288));
+  const rows = Math.ceil(colorCount / columns);
+  const legendHeight = 64 + rows * 128 + Math.max(0, rows - 1) * 24 + 64;
+  return [canvasWidth, height * 64 + 128 + legendHeight];
 }
 
 afterEach(async () => {
@@ -126,10 +135,30 @@ describe("gallery content tooling", () => {
     expect(publishedCatalog.patterns.map((pattern: { id: string }) => pattern.id)).toEqual(expectedPilotMetadata.patterns.map((pattern: { id: string }) => pattern.id));
     for (const expected of expectedPilotMetadata.patterns) {
       const pattern = publishedCatalog.patterns.find((candidate: { id: string }) => candidate.id === expected.id);
-      const [card, detail] = await Promise.all([readPublishedAsset(pattern.coverRef), readPublishedAsset(pattern.previewRef)]);
-      expect(pattern).toMatchObject({ id: expected.id, name: expected.name });
+      const [payloadBytes, card, detail] = await Promise.all([
+        readPublishedAsset(pattern.payload.fileRef),
+        readPublishedAsset(pattern.coverRef),
+        readPublishedAsset(pattern.previewRef),
+      ]);
+      const payload = JSON.parse((payloadBytes as Buffer).toString("utf8"));
+      const occupiedCells = payload.cells.filter((cell: string | null) => cell !== null);
+      const colorCount = new Set(occupiedCells).size;
+      const expectedDetail = expected.detail ?? expectedConstructionChartDimensions(payload.width, payload.height, colorCount);
+
+      expect(pattern).toMatchObject({
+        id: expected.id,
+        name: expected.name,
+        palette: { id: "mard-221", version: "2026.09-pinned" },
+        colorCount,
+        beadCount: occupiedCells.length,
+        payload: {
+          byteSize: (payloadBytes as Buffer).byteLength,
+          sha256: createHash("sha256").update(payloadBytes as Buffer).digest("hex"),
+        },
+      });
+      expect(pattern.payload.sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(PNG.sync.read(card as Buffer)).toMatchObject({ width: expected.card[0], height: expected.card[1] });
-      expect(PNG.sync.read(detail as Buffer)).toMatchObject({ width: expected.detail[0], height: expected.detail[1] });
+      expect(PNG.sync.read(detail as Buffer)).toMatchObject({ width: expectedDetail[0], height: expectedDetail[1] });
       expect(pattern.intentionalSingleCells).toEqual(expect.arrayContaining(expected.intentionalSingleCells));
     }
     expect(await validatePublishedCatalog(publishedCatalog, readPublishedAsset)).toEqual([]);

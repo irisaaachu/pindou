@@ -69,9 +69,11 @@ export async function validatePublishedCatalog(catalog, readAsset) {
     if (pattern.id !== id || pattern.name !== name || pattern.version !== "1.0.0") issue(issues, path, "Published pilot identity is invalid.");
     if (!Array.isArray(pattern.usageTags) || pattern.usageTags.length !== 1 || pattern.usageTags[0] !== slug) issue(issues, `${path}.usageTags`, "Published pilot category is invalid.");
     if (pattern.width !== width || pattern.height !== height) issue(issues, path, "Published pilot dimensions are invalid.");
+    if (!isRecord(pattern.palette) || pattern.palette.id !== "mard-221" || pattern.palette.version !== "2026.09-pinned") issue(issues, `${path}.palette`, "Published pilot palette is invalid.");
     if (pattern.creator !== "Pindou Studio" || pattern.sourceType !== "original" || pattern.licenseStatus !== "approved" || pattern.reviewStatus !== "approved" || pattern.publishStatus !== "published") issue(issues, path, "Published pilot provenance is invalid.");
     await validatePreviewAsset(readAsset, pattern.coverRef, width * 8, height * 8, `${path}.coverRef`, issues);
-    await validatePreviewAsset(readAsset, pattern.previewRef, width * 32 + 64, height * 32 + 64, `${path}.previewRef`, issues);
+    const chart = constructionChartDimensions(width, height, pattern.colorCount);
+    await validatePreviewAsset(readAsset, pattern.previewRef, chart.width, chart.height, `${path}.previewRef`, issues);
   }
   return issues;
 }
@@ -371,7 +373,15 @@ function validatePalette(value, path, issues) {
   if (!isRecord(value)) return issue(issues, path, "Palette must be an object.");
   validateFields(value, ["id", "version"], path, issues);
   validateNonEmptyString(value.id, `${path}.id`, issues);
-  if (!isSemanticVersion(value.version)) issue(issues, `${path}.version`, "Palette version must be semantic.");
+  if (!isSemanticVersion(value.version) && !/^\d{4}\.\d{2}-pinned$/.test(value.version)) issue(issues, `${path}.version`, "Palette version must be semantic or a pinned YYYY.MM release.");
+}
+
+function constructionChartDimensions(gridWidth, gridHeight, colorCount) {
+  const width = gridWidth * 64 + 128;
+  const columns = Math.max(1, Math.floor((width - 128 + 32) / 288));
+  const rows = Math.ceil(colorCount / columns);
+  const legendHeight = 64 + rows * 128 + Math.max(0, rows - 1) * 24 + 64;
+  return { width, height: gridHeight * 64 + 128 + legendHeight };
 }
 
 function validateFields(record, allowed, path, issues) {

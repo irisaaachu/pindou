@@ -112,7 +112,7 @@ describe("uniCloud gallery repository", () => {
         y: 3,
         font_id: "pindou-hanzi-12",
         size: 12,
-        color_id: "charcoal",
+        color_id: "H6",
         max_length: 4,
       }],
     });

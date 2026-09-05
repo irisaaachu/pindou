@@ -23,12 +23,12 @@
       "sizeClass": "large",
       "coverRef": "previews/card/inside-cute-dog-sign-v1.png",
       "previewRef": "previews/detail/inside-cute-dog-sign-v1.png",
-      "payload": { "fileRef": "payloads/inside-cute-dog-sign-v1.json", "formatVersion": 1, "byteSize": 22017, "sha256": "8dda698e370b6ea60fe67a6324d6000e58f56ecd83275ac1543683576a7f9cbf" },
+      "payload": { "fileRef": "payloads/inside-cute-dog-sign-v1.json", "formatVersion": 1, "byteSize": 18286, "sha256": "04966623dac5355625d73ba3bfbb6c6da6de6498591871ba887c9ff78ab07b40" },
       "width": 58,
       "height": 29,
       "physicalWidthMm": 290,
       "physicalHeightMm": 145,
-      "palette": { "id": "pindou-soft-original", "version": "1.0.0" },
+      "palette": { "id": "mard-221", "version": "2026.09-pinned" },
       "direction": "normal",
       "colorCount": 6,
       "beadCount": 1346,
@@ -43,8 +43,8 @@
       "publishStatus": "published",
       "order": 10,
       "intentionalSingleCells": [
-        { "x": 12, "y": 12, "colorId": "cocoa" }, { "x": 8, "y": 23, "colorId": "cocoa" }, { "x": 17, "y": 23, "colorId": "cocoa" },
-        { "x": 32, "y": 6, "colorId": "charcoal" }, { "x": 35, "y": 6, "colorId": "charcoal" }, { "x": 9, "y": 8, "colorId": "charcoal" }, { "x": 16, "y": 8, "colorId": "charcoal" }
+        { "x": 12, "y": 12, "colorId": "G17" }, { "x": 8, "y": 23, "colorId": "G17" }, { "x": 17, "y": 23, "colorId": "G17" },
+        { "x": 32, "y": 6, "colorId": "H6" }, { "x": 35, "y": 6, "colorId": "H6" }, { "x": 9, "y": 8, "colorId": "H6" }, { "x": 16, "y": 8, "colorId": "H6" }
       ]
     },
     {
@@ -59,12 +59,12 @@
       "sizeClass": "large",
       "coverRef": "previews/card/delivery-block-door-sign-v1.png",
       "previewRef": "previews/detail/delivery-block-door-sign-v1.png",
-      "payload": { "fileRef": "payloads/delivery-block-door-sign-v1.json", "formatVersion": 1, "byteSize": 22847, "sha256": "4841162f9fd08c3f61c5634c87bed335ade28f973bd9ec64541b75108844b51e" },
+      "payload": { "fileRef": "payloads/delivery-block-door-sign-v1.json", "formatVersion": 1, "byteSize": 18522, "sha256": "0a0b3f070f4f030c87745e6adefb18c86c54aa4d7c053a0c4918d0f476d1ca2d" },
       "width": 58,
       "height": 29,
       "physicalWidthMm": 290,
       "physicalHeightMm": 145,
-      "palette": { "id": "pindou-soft-original", "version": "1.0.0" },
+      "palette": { "id": "mard-221", "version": "2026.09-pinned" },
       "direction": "normal",
       "colorCount": 6,
       "beadCount": 1512,
@@ -79,9 +79,9 @@
       "publishStatus": "published",
       "order": 20,
       "intentionalSingleCells": [
-        { "x": 1, "y": 1, "colorId": "cream" }, { "x": 56, "y": 1, "colorId": "cream" }, { "x": 24, "y": 6, "colorId": "cream" }, { "x": 1, "y": 27, "colorId": "cream" }, { "x": 56, "y": 27, "colorId": "cream" },
-        { "x": 13, "y": 10, "colorId": "charcoal" }, { "x": 20, "y": 10, "colorId": "charcoal" }, { "x": 29, "y": 10, "colorId": "charcoal" }, { "x": 19, "y": 11, "colorId": "charcoal" }, { "x": 30, "y": 11, "colorId": "charcoal" },
-        { "x": 6, "y": 13, "colorId": "gold" }, { "x": 3, "y": 21, "colorId": "coral" }, { "x": 6, "y": 21, "colorId": "coral" }
+        { "x": 1, "y": 1, "colorId": "H13" }, { "x": 56, "y": 1, "colorId": "H13" }, { "x": 24, "y": 6, "colorId": "H13" }, { "x": 1, "y": 27, "colorId": "H13" }, { "x": 56, "y": 27, "colorId": "H13" },
+        { "x": 13, "y": 10, "colorId": "H6" }, { "x": 20, "y": 10, "colorId": "H6" }, { "x": 29, "y": 10, "colorId": "H6" }, { "x": 19, "y": 11, "colorId": "H6" }, { "x": 30, "y": 11, "colorId": "H6" },
+        { "x": 6, "y": 13, "colorId": "G5" }, { "x": 3, "y": 21, "colorId": "F9" }, { "x": 6, "y": 21, "colorId": "F9" }
       ]
     },
     {
@@ -96,15 +96,15 @@
       "sizeClass": "small",
       "coverRef": "previews/card/birthday-dog-cake-bouquet-v1.png",
       "previewRef": "previews/detail/birthday-dog-cake-bouquet-v1.png",
-      "payload": { "fileRef": "payloads/birthday-dog-cake-bouquet-v1.json", "formatVersion": 1, "byteSize": 11087, "sha256": "5004665226dab9131d72a5857b8c11621f26ea4ebccc27b98347edc9df24519e" },
+      "payload": { "fileRef": "payloads/birthday-dog-cake-bouquet-v1.json", "formatVersion": 1, "byteSize": 9339, "sha256": "06c649299d2c859ec5e2525b0e9cb4f3d691371ebc2b921c93088356d9af8c0d" },
       "width": 29,
       "height": 29,
       "physicalWidthMm": 145,
       "physicalHeightMm": 145,
-      "palette": { "id": "pindou-soft-original", "version": "1.0.0" },
+      "palette": { "id": "mard-221", "version": "2026.09-pinned" },
       "direction": "normal",
       "colorCount": 11,
-      "beadCount": 729,
+      "beadCount": 725,
       "recommendationWeight": 20,
       "publishedAt": "2026-09-05T00:00:00.000Z",
       "creator": "Pindou Studio",
@@ -116,10 +116,10 @@
       "publishStatus": "published",
       "order": 30,
       "intentionalSingleCells": [
-        { "x": 1, "y": 1, "colorId": "cream" }, { "x": 27, "y": 1, "colorId": "cream" }, { "x": 1, "y": 27, "colorId": "cream" }, { "x": 27, "y": 27, "colorId": "cream" }, { "x": 9, "y": 12, "colorId": "cocoa" }, { "x": 24, "y": 18, "colorId": "lavender" },
-        { "x": 7, "y": 9, "colorId": "charcoal" }, { "x": 12, "y": 9, "colorId": "charcoal" }, { "x": 20, "y": 12, "colorId": "coral" }, { "x": 18, "y": 18, "colorId": "coral" }, { "x": 23, "y": 22, "colorId": "coral" },
-        { "x": 18, "y": 14, "colorId": "butter" }, { "x": 22, "y": 14, "colorId": "butter" }, { "x": 21, "y": 20, "colorId": "butter" }, { "x": 23, "y": 19, "colorId": "sage" }, { "x": 22, "y": 20, "colorId": "sage" }, { "x": 21, "y": 21, "colorId": "sage" },
-        { "x": 20, "y": 22, "colorId": "sage" }, { "x": 19, "y": 23, "colorId": "sage" }, { "x": 18, "y": 24, "colorId": "sage" }, { "x": 17, "y": 20, "colorId": "mint" }
+        { "x": 9, "y": 12, "colorId": "G17" }, { "x": 24, "y": 18, "colorId": "D11" },
+        { "x": 7, "y": 9, "colorId": "H6" }, { "x": 12, "y": 9, "colorId": "H6" }, { "x": 20, "y": 12, "colorId": "F9" }, { "x": 18, "y": 18, "colorId": "F9" }, { "x": 23, "y": 22, "colorId": "F9" },
+        { "x": 18, "y": 14, "colorId": "A20" }, { "x": 22, "y": 14, "colorId": "A20" }, { "x": 21, "y": 20, "colorId": "A20" }, { "x": 23, "y": 19, "colorId": "M1" }, { "x": 22, "y": 20, "colorId": "M1" }, { "x": 21, "y": 21, "colorId": "M1" },
+        { "x": 20, "y": 22, "colorId": "M1" }, { "x": 19, "y": 23, "colorId": "M1" }, { "x": 18, "y": 24, "colorId": "M1" }, { "x": 17, "y": 20, "colorId": "B10" }
       ]
     },
     {
@@ -134,12 +134,12 @@
       "sizeClass": "large",
       "coverRef": "previews/card/farewell-fortune-sign-v1.png",
       "previewRef": "previews/detail/farewell-fortune-sign-v1.png",
-      "payload": { "fileRef": "payloads/farewell-fortune-sign-v1.json", "formatVersion": 1, "byteSize": 25080, "sha256": "2902deb8b86a2fb07a714e0d3deeb0106b613a2d6ce2c1c6dd7ea936a018dfdd" },
+      "payload": { "fileRef": "payloads/farewell-fortune-sign-v1.json", "formatVersion": 1, "byteSize": 18507, "sha256": "5a103d8348e6804861a1ebc2ae45235b0dbf1e8411f1c699a54644e7bd6273e6" },
       "width": 58,
       "height": 29,
       "physicalWidthMm": 290,
       "physicalHeightMm": 145,
-      "palette": { "id": "pindou-soft-original", "version": "1.0.0" },
+      "palette": { "id": "mard-221", "version": "2026.09-pinned" },
       "direction": "normal",
       "colorCount": 7,
       "beadCount": 1346,
@@ -154,9 +154,9 @@
       "publishStatus": "published",
       "order": 40,
       "intentionalSingleCells": [
-        { "x": 21, "y": 7, "colorId": "lavender" }, { "x": 23, "y": 7, "colorId": "lavender" }, { "x": 9, "y": 8, "colorId": "lavender" }, { "x": 12, "y": 8, "colorId": "lavender" }, { "x": 17, "y": 25, "colorId": "lavender" },
-        { "x": 10, "y": 11, "colorId": "charcoal" }, { "x": 18, "y": 12, "colorId": "charcoal" }, { "x": 21, "y": 12, "colorId": "charcoal" }, { "x": 24, "y": 12, "colorId": "charcoal" }, { "x": 27, "y": 12, "colorId": "charcoal" }, { "x": 17, "y": 13, "colorId": "charcoal" }, { "x": 20, "y": 13, "colorId": "charcoal" }, { "x": 23, "y": 13, "colorId": "charcoal" }, { "x": 28, "y": 13, "colorId": "charcoal" },
-        { "x": 8, "y": 5, "colorId": "coral" }, { "x": 51, "y": 7, "colorId": "mint" }, { "x": 6, "y": 19, "colorId": "butter" }, { "x": 50, "y": 19, "colorId": "butter" }
+        { "x": 21, "y": 7, "colorId": "D11" }, { "x": 23, "y": 7, "colorId": "D11" }, { "x": 9, "y": 8, "colorId": "D11" }, { "x": 12, "y": 8, "colorId": "D11" }, { "x": 17, "y": 25, "colorId": "D11" },
+        { "x": 10, "y": 11, "colorId": "H6" }, { "x": 18, "y": 12, "colorId": "H6" }, { "x": 21, "y": 12, "colorId": "H6" }, { "x": 24, "y": 12, "colorId": "H6" }, { "x": 27, "y": 12, "colorId": "H6" }, { "x": 17, "y": 13, "colorId": "H6" }, { "x": 20, "y": 13, "colorId": "H6" }, { "x": 23, "y": 13, "colorId": "H6" }, { "x": 28, "y": 13, "colorId": "H6" },
+        { "x": 8, "y": 5, "colorId": "F9" }, { "x": 51, "y": 7, "colorId": "B10" }, { "x": 6, "y": 19, "colorId": "A20" }, { "x": 50, "y": 19, "colorId": "A20" }
       ]
     }
   ]
