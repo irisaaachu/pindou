@@ -831,7 +831,7 @@ git add docs/unicloud-aliyun-setup.md docs/superpowers/plans/2026-09-03-pattern-
 git commit -m "docs: complete milestone 6 gallery delivery"
 ```
 
-- [ ] **Step 5: Tag and push**
+- [x] **Step 5: Tag and push**
 
 ```bash
 git tag -a milestone-06-pattern-gallery-contracts -m "Milestone 6: pattern gallery contracts"
@@ -839,7 +839,7 @@ git push origin main
 git push origin milestone-06-pattern-gallery-contracts
 ```
 
-- [ ] **Step 6: Verify remote equality**
+- [x] **Step 6: Verify remote equality**
 
 ```bash
 git fetch origin
