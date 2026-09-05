@@ -3,13 +3,38 @@ import { fileURLToPath } from "node:url";
 
 import {
   createGrid,
-  drawLine,
-  drawRect,
-  placeGlyph,
-  setCell,
+  drawLine as drawMardLine,
+  drawRect as drawMardRect,
+  placeGlyph as placeMardGlyph,
+  setCell as setMardCell,
 } from "../../../scripts/gallery/grid-authoring.mjs";
 
 const glyphs = JSON.parse(readFileSync(fileURLToPath(new URL("../glyphs/pindou-hanzi-12-v1.json", import.meta.url)), "utf8"));
+const colors = Object.freeze({
+  cream: "H13",
+  blush: "E15",
+  lavender: "D11",
+  sage: "M1",
+  butter: "A20",
+  cocoa: "G17",
+  white: "H2",
+  coral: "F9",
+  mint: "B10",
+  gold: "G5",
+  charcoal: "H6",
+});
+
+function withMardColor(draw) {
+  return (...args) => {
+    const color = args.at(-1);
+    return draw(...args.slice(0, -1), color === null ? null : colors[color]);
+  };
+}
+
+const drawLine = withMardColor(drawMardLine);
+const drawRect = withMardColor(drawMardRect);
+const placeGlyph = withMardColor(placeMardGlyph);
+const setCell = withMardColor(setMardCell);
 
 export function createPilotPatterns() {
   return [
@@ -96,6 +121,10 @@ function createBirthdayDogCakeBouquet() {
   grid = drawLine(grid, 2, 27, 26, 27, "cocoa");
   grid = drawLine(grid, 1, 2, 1, 26, "cocoa");
   grid = drawLine(grid, 27, 2, 27, 26, "cocoa");
+  grid = setCell(grid, 1, 1, null);
+  grid = setCell(grid, 27, 1, null);
+  grid = setCell(grid, 1, 27, null);
+  grid = setCell(grid, 27, 27, null);
 
   grid = drawRect(grid, 5, 7, 10, 10, "white");
   grid = drawLine(grid, 6, 6, 13, 6, "cocoa");
@@ -183,7 +212,7 @@ function payload(contentId, grid, editableTextRegions) {
     contentVersion: "1.0.0",
     width: grid.width,
     height: grid.height,
-    palette: { id: "pindou-soft-original", version: "1.0.0" },
+    palette: { id: "mard-221", version: "2026.09-pinned" },
     cells: grid.cells,
     direction: "normal",
     editableTextRegions,
@@ -198,7 +227,7 @@ function textRegion(id, defaultText, x, y) {
     y,
     fontId: "pindou-hanzi-12",
     size: 12,
-    colorId: "charcoal",
+    colorId: colors.charcoal,
     maxLength: defaultText.length,
   };
 }
