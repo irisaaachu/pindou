@@ -89,6 +89,12 @@ describe("validateFoundationSchemas", () => {
     );
   });
 
+  test("requires gallery collections to deny direct client reads", () => {
+    const schemas = validSchemas();
+    schemas["pindou-gallery-categories"].permission.read = "doc.publish_status == 'published'";
+    expect(validateFoundationSchemas(schemas)).toContain("pindou-gallery-categories permission.read must be false");
+  });
+
   test.each([
     "original_photo",
     "original_photo_path",
@@ -115,7 +121,7 @@ function validSchemas(): Record<string, FoundationSchema> {
     }
 
     return [collection, {
-      permission: { read: publicRead, create: false, update: false, delete: false },
+      permission: { read: collection.startsWith("pindou-gallery-") ? false : publicRead, create: false, update: false, delete: false },
       required: [...provenanceFields],
       properties: Object.fromEntries(provenanceFields.map((field) => [field, {}])),
     }];

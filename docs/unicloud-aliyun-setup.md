@@ -39,7 +39,7 @@ GitHub 中出现这些文件，只能证明云基础层已准备；在用户登�
 2. 上传本次变更的两个 DB Schema：`pindou-gallery-categories.schema.json` 和 `pindou-gallery-patterns.schema.json`。
 3. 上传云对象 `pindou-gallery`。
 4. 在项目根目录本地运行 `npm run build:gallery-import`，生成确定性的图库导入文件。
-5. 通过 uniCloud 控制台或 HBuilderX 支持的数据导入流程，把 `generated/gallery-import/categories.json` 导入 `pindou-gallery-categories`，再把 `generated/gallery-import/patterns.json` 导入 `pindou-gallery-patterns`。
+5. 通过 uniCloud 控制台或 HBuilderX 支持的数据导入流程，把 `generated/gallery-import/categories.json` 导入 `pindou-gallery-categories`，再把 `generated/gallery-import/patterns.json` 导入 `pindou-gallery-patterns`。导入文件为每个 `content_id + version` 生成稳定的 `_id`：首次导入使用“新增”；重复部署时相同内容可以跳过已存在的 `_id`。如果同一 `_id` 的内容不同，必须停止导入并提升 `version`，不得覆盖已发布版本。数据库的 `_id` 唯一约束会阻止重复或冲突记录被静默新增。
 6. 在云端数据库中确认 Milestone 6 恰好有 8 个分类、0 个正式图纸。0 个正式图纸是本阶段的预期结果，不是部署失败。
 7. 在 HBuilderX 中连接云端云函数环境并运行微信小程序，确认未登录用户可以直接看到图库空状态，且浏览过程不会弹出登录授权。
 

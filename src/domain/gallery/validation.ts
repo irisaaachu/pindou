@@ -93,7 +93,7 @@ export function validateGalleryListQuery(input: unknown): GalleryValidationResul
   if (!isRecord(input)) return failure("INVALID_DOCUMENT", "");
   const fields = unknownField(input, ["search", "usageTags", "themeTags", "featureTags", "difficulty", "sizeClass", "order", "cursor", "limit"]);
   if (fields) return fields;
-  if (input.search !== undefined && (!isNonEmptyString(input.search) || input.search !== input.search.trim())) return failure("INVALID_FIELD", "search");
+  if (input.search !== undefined && (!isNonEmptyString(input.search) || input.search !== input.search.trim() || input.search.length > 80)) return failure("INVALID_FIELD", "search");
   for (const name of ["usageTags", "themeTags", "featureTags"] as const) {
     const tags = validateOptionalTagArray(input[name], name);
     if (tags) return tags;
@@ -149,10 +149,11 @@ function validateTags(value: unknown): GalleryValidationResult<never> | null {
 function validateOptionalTagArray(value: unknown, path: string): GalleryValidationResult<never> | null {
   if (value === undefined) return null;
   if (!Array.isArray(value)) return failure("INVALID_FIELD", path);
+  if (value.length > 8) return failure("INVALID_FIELD", path);
   const seen = new Set<string>();
   for (let index = 0; index < value.length; index += 1) {
     const tag = value[index];
-    if (!isNonEmptyString(tag) || tag !== tag.trim() || seen.has(tag)) return failure("INVALID_FIELD", `${path}[${index}]`);
+    if (!isNonEmptyString(tag) || tag !== tag.trim() || tag.length > 32 || seen.has(tag)) return failure("INVALID_FIELD", `${path}[${index}]`);
     seen.add(tag);
   }
   return null;

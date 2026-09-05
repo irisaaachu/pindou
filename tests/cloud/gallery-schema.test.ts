@@ -5,12 +5,10 @@ import { describe, expect, test } from "vitest";
 const categoriesSchema = JSON.parse(readFileSync("uniCloud-aliyun/database/pindou-gallery-categories.schema.json", "utf8"));
 const patternsSchema = JSON.parse(readFileSync("uniCloud-aliyun/database/pindou-gallery-patterns.schema.json", "utf8"));
 
-const publicationRead = "doc.publish_status == 'published' && doc.license_status == 'approved' && doc.review_status == 'approved'";
-
 describe("gallery database schemas", () => {
-  test("deny ordinary writes while allowing only fully approved public records", () => {
+  test("denies direct client access so reads must use the projecting cloud object", () => {
     for (const schema of [categoriesSchema, patternsSchema]) {
-      expect(schema.permission).toEqual({ read: publicationRead, create: false, update: false, delete: false });
+      expect(schema.permission).toEqual({ read: false, create: false, update: false, delete: false });
       expect(schema.additionalProperties).toBe(false);
     }
   });

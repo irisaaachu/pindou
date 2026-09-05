@@ -7,7 +7,10 @@ export const EXPECTED_COLLECTIONS = [
 ];
 
 const PUBLIC_COLLECTIONS = EXPECTED_COLLECTIONS.filter(
-  (collection) => collection !== "pindou-projects",
+  (collection) => collection !== "pindou-projects" && !collection.startsWith("pindou-gallery-"),
+);
+const CLOUD_OBJECT_ONLY_COLLECTIONS = EXPECTED_COLLECTIONS.filter(
+  (collection) => collection.startsWith("pindou-gallery-"),
 );
 const WRITE_OPERATIONS = ["create", "update", "delete"];
 const PROVENANCE_FIELDS = [
@@ -69,6 +72,21 @@ export function validateFoundationSchemas(schemas) {
       }
     }
 
+    for (const field of PROVENANCE_FIELDS) {
+      if (!schema.required?.includes(field) || !(field in (schema.properties ?? {}))) {
+        issues.push(`${collection} missing required property: ${field}`);
+      }
+    }
+  }
+
+  for (const collection of CLOUD_OBJECT_ONLY_COLLECTIONS) {
+    const schema = schemas[collection];
+    if (!schema) continue;
+    for (const operation of ["read", ...WRITE_OPERATIONS]) {
+      if (schema.permission?.[operation] !== false) {
+        issues.push(`${collection} permission.${operation} must be false`);
+      }
+    }
     for (const field of PROVENANCE_FIELDS) {
       if (!schema.required?.includes(field) || !(field in (schema.properties ?? {}))) {
         issues.push(`${collection} missing required property: ${field}`);

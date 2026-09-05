@@ -84,5 +84,20 @@ describe("gallery content tooling", () => {
     expect(await readFile(resolve(outputDirectory, "patterns.json"), "utf8")).toBe(firstPatterns);
     expect(JSON.parse(firstCategories)[0]).toMatchObject({ content_id: "usage-gift", short_label: "礼物" });
     expect(JSON.parse(firstPatterns)[0]).toMatchObject({ content_id: "tiny-heart", payload_file_ref: "payloads/tiny-heart-v1.json" });
+    expect(JSON.parse(firstCategories)[0]._id).toBe("gallery-category:usage-gift@1.0.0");
+    expect(JSON.parse(firstPatterns)[0]._id).toBe("gallery-pattern:tiny-heart@1.0.0");
+  });
+
+  test("uses one immutable database identity per content ID and version", async () => {
+    const outputDirectory = await mkdtemp(resolve(tmpdir(), "gallery-import-"));
+    temporaryDirectories.push(outputDirectory);
+    await buildGalleryImport(validCatalog, readFixtureAsset, outputDirectory);
+    const first = JSON.parse(await readFile(resolve(outputDirectory, "patterns.json"), "utf8"))[0];
+    const changed = { ...validCatalog, patterns: [{ ...validCatalog.patterns[0], name: "Conflicting name" }] };
+    await buildGalleryImport(changed, readFixtureAsset, outputDirectory);
+    const conflict = JSON.parse(await readFile(resolve(outputDirectory, "patterns.json"), "utf8"))[0];
+
+    expect(conflict._id).toBe(first._id);
+    expect(conflict.name).not.toBe(first.name);
   });
 });

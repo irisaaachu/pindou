@@ -14,6 +14,7 @@ import {
   type GalleryControllerState,
 } from "./controller";
 import type { PindouProjectV1 } from "../../domain/project";
+import { createUniProjectRepository } from "../../adapters/projects";
 
 export interface GalleryRuntimeDependencies {
   controllerDependencies: Parameters<typeof createGalleryController>[0];
@@ -55,7 +56,7 @@ function defaultCopyDependencies(): GalleryCopyDependencies {
   };
 }
 
-export function createProductionGalleryRuntime(projects: Parameters<typeof createGalleryController>[0]["projects"]): GalleryRuntime {
+export function createProductionGalleryRuntime(projects = createUniProjectRepository()): GalleryRuntime {
   const platform = createGalleryCloudDependencies();
   const repository = createUniCloudGalleryRepository(platform);
   const source = createCachedPayloadSource(

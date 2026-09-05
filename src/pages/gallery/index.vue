@@ -5,15 +5,9 @@ import { onLoad, onUnload } from "@dcloudio/uni-app";
 import GalleryFilters, { type GalleryFilterValue } from "../../components/gallery/GalleryFilters.vue";
 import PatternCard from "../../components/gallery/PatternCard.vue";
 import { createProductionGalleryRuntime } from "../../application/gallery";
-import type { ProjectRepository } from "../../domain/contracts";
 import type { GalleryListQuery, GalleryPatternSummary } from "../../domain/gallery";
 
-const sessionProjects = new Map<string, Awaited<ReturnType<ProjectRepository["get"]>>>();
-const galleryProjects: ProjectRepository = {
-  list: async () => [], get: async (id) => sessionProjects.get(id) ?? null,
-  save: async (project) => { sessionProjects.set(project.id, project); }, delete: async (id) => { sessionProjects.delete(id); },
-};
-function createGalleryRuntime() { return createProductionGalleryRuntime(galleryProjects); }
+function createGalleryRuntime() { return createProductionGalleryRuntime(); }
 const galleryRuntime = createGalleryRuntime();
 const searchText = ref("");
 const showFilters = ref(false);

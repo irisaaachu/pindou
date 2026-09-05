@@ -34,6 +34,9 @@ describe("pindou gallery core", () => {
     });
     expect(validateListQuery({})).toMatchObject({ limit: 12, order: "featured" });
     expect(() => validateListQuery({ limit: 25 })).toThrow("INVALID_REQUEST");
+    expect(() => validateListQuery({ search: "x".repeat(81) })).toThrow("INVALID_REQUEST");
+    expect(() => validateListQuery({ usageTags: Array.from({ length: 9 }, (_, index) => `tag-${index}`) })).toThrow("INVALID_REQUEST");
+    expect(() => validateListQuery({ themeTags: ["x".repeat(33)] })).toThrow("INVALID_REQUEST");
   });
 
   test("builds published selectors with intersecting tag filters", () => {

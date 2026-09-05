@@ -129,6 +129,9 @@ describe("gallery document validators", () => {
     ["excessive limit", { order: "featured", limit: 25 }, "limit"],
     ["empty tag", { usageTags: [""], order: "featured", limit: 12 }, "usageTags[0]"],
     ["duplicate tag", { themeTags: ["cute", "cute"], order: "featured", limit: 12 }, "themeTags[1]"],
+    ["oversized search", { search: "x".repeat(81), order: "featured", limit: 12 }, "search"],
+    ["too many tags", { usageTags: Array.from({ length: 9 }, (_, index) => `tag-${index}`), order: "featured", limit: 12 }, "usageTags"],
+    ["oversized tag", { featureTags: ["x".repeat(33)], order: "featured", limit: 12 }, "featureTags[0]"],
   ])("rejects query with %s", (_name, query, path) => {
     expect(validateGalleryListQuery(query)).toEqual({ ok: false, error: { code: "INVALID_FIELD", path } });
   });

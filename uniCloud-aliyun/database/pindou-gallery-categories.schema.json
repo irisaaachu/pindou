@@ -4,7 +4,7 @@
   "additionalProperties": false,
   "required": ["content_id", "version", "slug", "name", "short_label", "quick_entry", "creator", "source_type", "license_status", "review_status", "acquired_at", "publish_status", "order"],
   "permission": {
-    "read": "doc.publish_status == 'published' && doc.license_status == 'approved' && doc.review_status == 'approved'",
+    "read": false,
     "create": false,
     "update": false,
     "delete": false

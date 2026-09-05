@@ -4,17 +4,8 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 
 import { createProductionGalleryRuntime } from "../../application/gallery";
-import type { ProjectRepository } from "../../domain/contracts";
 
-const localProjects = new Map<string, Awaited<ReturnType<ProjectRepository["get"]>>>();
-const projects: ProjectRepository = {
-  list: async () => [],
-  get: async (id) => localProjects.get(id) ?? null,
-  save: async (project) => { localProjects.set(project.id, project); },
-  delete: async (id) => { localProjects.delete(id); },
-};
-
-const galleryRuntime = createProductionGalleryRuntime(projects);
+const galleryRuntime = createProductionGalleryRuntime();
 const detailState = computed(() => galleryRuntime.state.detail);
 const previewFailed = ref(false);
 const usePending = ref(false);

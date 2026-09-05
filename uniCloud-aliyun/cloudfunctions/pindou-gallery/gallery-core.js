@@ -7,6 +7,9 @@ const PUBLICATION_SELECTOR = Object.freeze({
 });
 const FEATURED_ORDER = [["recommendation_weight", "desc"], ["published_at", "desc"], ["content_id", "asc"]];
 const NEWEST_ORDER = [["published_at", "desc"], ["content_id", "asc"]];
+const MAX_SEARCH_LENGTH = 80;
+const MAX_TAGS_PER_DIMENSION = 8;
+const MAX_TAG_LENGTH = 32;
 
 function invalidRequest() {
   const error = new Error("INVALID_REQUEST");
@@ -32,6 +35,7 @@ function validateListQuery(value) {
   if (value.search !== undefined) {
     if (typeof value.search !== "string") throw invalidRequest();
     const search = value.search.trim().toLowerCase();
+    if (search.length > MAX_SEARCH_LENGTH) throw invalidRequest();
     if (search) query.search = search;
   }
   if (value.difficulty !== undefined) {
@@ -172,7 +176,8 @@ function projectPatternDetail(record) {
 
 function normalizeTags(value) {
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.some((tag) => typeof tag !== "string" || !tag.trim())) throw invalidRequest();
+  if (!Array.isArray(value) || value.length > MAX_TAGS_PER_DIMENSION
+    || value.some((tag) => typeof tag !== "string" || !tag.trim() || tag.trim().length > MAX_TAG_LENGTH)) throw invalidRequest();
   const tags = value.map((tag) => tag.trim().toLowerCase());
   if (new Set(tags).size !== tags.length) throw invalidRequest();
   return tags;
