@@ -36,25 +36,25 @@
 - Consumes: validated catalog records and the existing stable `_id` mapping.
 - Produces: `writeJsonLines(records): string` and `categories-import.json` / `patterns-import.json` artifacts.
 
-- [ ] **Step 1: Add failing import-format tests**
+- [x] **Step 1: Add failing import-format tests**
 
 Assert that each non-empty line parses as one object, the file itself does not parse as a JSON array, categories contain eight lines, an empty pattern set produces a zero-byte file, and stable `_id` values are preserved.
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 Run: `npm test -- tests/gallery/content-tooling.test.ts`
 
 Expected: FAIL because the current builder writes pretty-printed arrays named `categories.json` and `patterns.json`.
 
-- [ ] **Step 3: Implement JSONL output**
+- [x] **Step 3: Implement JSONL output**
 
 Export `writeJsonLines(records)` as `records.map(record => JSON.stringify(record)).join("\n") + (records.length ? "\n" : "")`. Write only `categories-import.json` and `patterns-import.json`, removing obsolete output names first.
 
-- [ ] **Step 4: Document the exact console requirement**
+- [x] **Step 4: Document the exact console requirement**
 
 State explicitly that uniCloud accepts a `.json` file whose contents are JSONL and that a JSON array is rejected.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npm test -- tests/gallery/content-tooling.test.ts && npm run build:gallery-import`
 
@@ -73,21 +73,21 @@ Inspect both generated files line-by-line, then commit only the four named sourc
 - Produces: `createGrid(width, height)`, `setCell`, `drawLine`, `drawRect`, `placeGlyph`, `countBeads`, `collectColorIds` and `loadPalette`.
 - Consumers: Tasks 3 and 4.
 
-- [ ] **Step 1: Write failing primitive and glyph tests**
+- [x] **Step 1: Write failing primitive and glyph tests**
 
 Cover bounds rejection, immutable row-major output, horizontal/vertical lines, rectangles, transparent cells, unknown glyph/color rejection and exact placement of every Chinese character required by the four designs.
 
-- [ ] **Step 2: Run focused tests and confirm RED**
+- [x] **Step 2: Run focused tests and confirm RED**
 
 Run: `npm test -- tests/gallery/grid-authoring.test.ts`
 
 Expected: FAIL because authoring modules and registries do not exist.
 
-- [ ] **Step 3: Add the minimal registries and primitives**
+- [x] **Step 3: Add the minimal registries and primitives**
 
 The palette defines stable IDs for cream, blush, lavender, sage, butter, cocoa, white, coral, mint, gold and charcoal. Glyph rows are fixed-width binary strings and include only `内有萌犬快递挡在门口脱离苦海发大财`.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `npm test -- tests/gallery/grid-authoring.test.ts`
 
@@ -108,25 +108,25 @@ Expected: PASS with no filesystem writes during module import. Commit with `feat
 - Produces: four `GalleryPatternPayloadV1` files and `buildPilotPayloads(outputRoot)`.
 - Consumes: Task 2 primitives and palette/glyph registries.
 
-- [ ] **Step 1: Write failing content-shape tests**
+- [x] **Step 1: Write failing content-shape tests**
 
 Assert exact IDs, versions and dimensions; non-empty bead bounds; allowed palette IDs; intended default text regions; two farewell regions; no birthday text region; and byte-identical second generation.
 
-- [ ] **Step 2: Run focused tests and confirm RED**
+- [x] **Step 2: Run focused tests and confirm RED**
 
 Run: `npm test -- tests/gallery/pilot-patterns.test.ts`
 
-- [ ] **Step 3: Implement the four compositions**
+- [x] **Step 3: Implement the four compositions**
 
 Build only the motifs named in the spec. Keep each composition a direct sequence of grid primitives; do not add a general vector engine or configurable template language.
 
-- [ ] **Step 4: Generate, inspect and verify payloads**
+- [x] **Step 4: Generate, inspect and verify payloads**
 
 Run: `node scripts/gallery/build-pilot-content.mjs --payloads-only` and `npm test -- tests/gallery/pilot-patterns.test.ts`.
 
 Confirm every `cells.length` equals width × height and every text region is inside its grid.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit the design, builder, four generated payloads and test with `feat(content): author four pilot gallery patterns`.
 
@@ -151,23 +151,23 @@ Commit the design, builder, four generated payloads and test with `feat(content)
 - Produces: `renderPatternPng(payload, palette, options): Buffer`, where options contain `pixelsPerCell`, `showCoordinates`, `majorGuideEvery: 10` and `pegboardSize: 29`.
 - Consumes: Task 2 palette and Task 3 payloads.
 
-- [ ] **Step 1: Add exact renderer tests before the dependency**
+- [x] **Step 1: Add exact renderer tests before the dependency**
 
 Test PNG signature, exact 8/32-pixel grid dimensions, the fixed 64-pixel top/left detail margins, transparency/background policy, deterministic bytes, visible bead centre/edge difference, tenth-bead guides, 29-bead board boundaries, coordinate consistency and rejection of unknown colors or invalid cell counts.
 
-- [ ] **Step 2: Run tests and confirm RED**
+- [x] **Step 2: Run tests and confirm RED**
 
 Run: `npm test -- tests/gallery/pattern-renderer.test.ts`
 
-- [ ] **Step 3: Install one pinned script dependency**
+- [x] **Step 3: Install one pinned script dependency**
 
 Add exact development dependency `pngjs@7.0.0`. The renderer is ESM JavaScript, so do not add a type package. Do not add Canvas, Sharp or a browser renderer.
 
-- [ ] **Step 4: Implement and generate previews**
+- [x] **Step 4: Implement and generate previews**
 
 Render a warm-cream background, subtle grid separation, tenth-bead guides, 29-bead boundaries, optional row/column coordinates and circular beads directly from payload cells. Card images omit coordinates; detail images include them. Generate eight committed PNG files.
 
-- [ ] **Step 5: Verify dimensions and commit**
+- [x] **Step 5: Verify dimensions and commit**
 
 Run the renderer tests twice and compare hashes of all eight files. Commit with `feat(content): render pilot gallery previews`.
 
@@ -187,23 +187,23 @@ Run the renderer tests twice and compare hashes of all eight files. Commit with 
 - Produces: four approved catalog records and `asset-upload-manifest.json` containing twelve logical keys/local paths.
 - Consumes: Tasks 3 and 4 assets.
 
-- [ ] **Step 1: Write failing catalog and asset tests**
+- [x] **Step 1: Write failing catalog and asset tests**
 
 Require exact four records, approved provenance, correct category slugs, exact payload hashes/sizes, derived bead/color counts, maximum eleven colors, expected PNG files/dimensions and a twelve-entry upload manifest with no cloud IDs. Compute connected components per color and reject undeclared isolated single cells; the birthday/farewell design fixtures explicitly enumerate any intentional sparkle coordinates.
 
-- [ ] **Step 2: Run validation and confirm RED**
+- [x] **Step 2: Run validation and confirm RED**
 
 Run: `npm test -- tests/gallery/content-tooling.test.ts && npm run validate:gallery`
 
-- [ ] **Step 3: Add four metadata records and strict asset validation**
+- [x] **Step 3: Add four metadata records and strict asset validation**
 
 Use exact version `1.0.0`, `Pindou Studio`, `original`, approved license/review/publication states and the four IDs from the spec. Compute facts from payloads; never type hashes, byte sizes, counts or image dimensions by hand.
 
-- [ ] **Step 4: Build and inspect the upload manifest**
+- [x] **Step 4: Build and inspect the upload manifest**
 
 Run: `node scripts/gallery/build-gallery-upload-manifest.mjs`. Confirm it has twelve unique logical keys and only repository-relative source paths.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run focused tests plus `npm run validate:gallery`. Commit with `feat(content): register four approved gallery patterns`.
 
@@ -221,23 +221,23 @@ Run focused tests plus `npm run validate:gallery`. Commit with `feat(content): r
 - Produces: `resolveCloudAssetRefs(catalog, mapping)` and deployable `patterns-import.json`.
 - Consumes: a local ignored `content/gallery/cloud-file-map.json` created by the user after upload.
 
-- [ ] **Step 1: Add failing mapping-boundary tests**
+- [x] **Step 1: Add failing mapping-boundary tests**
 
 Reject missing/extra logical keys, duplicate cloud IDs, blank IDs, non-cloud references and a mapping accidentally included in tracked files. Assert that list/detail/payload refs resolve to their corresponding cloud file IDs and no local path enters database output.
 
-- [ ] **Step 2: Run focused tests and confirm RED**
+- [x] **Step 2: Run focused tests and confirm RED**
 
 Run: `npm test -- tests/gallery/content-tooling.test.ts`
 
-- [ ] **Step 3: Implement the minimal mapping resolver**
+- [x] **Step 3: Implement the minimal mapping resolver**
 
 Read the mapping only when `--cloud-file-map <path>` is passed. Default catalog validation and preview generation remain account-independent. Never print mapping values in success or error output.
 
-- [ ] **Step 4: Add exact user deployment instructions**
+- [x] **Step 4: Add exact user deployment instructions**
 
 Document upload order, how to copy twelve returned file IDs into the ignored mapping based on the example, how to build JSONL imports and how to verify four records.
 
-- [ ] **Step 5: Verify secret boundaries and commit**
+- [x] **Step 5: Verify secret boundaries and commit**
 
 Run focused tests, `git check-ignore content/gallery/cloud-file-map.json`, and tracked-file scans only. Commit with `feat(content): package cloud-safe gallery imports`.
 
@@ -253,19 +253,19 @@ Run focused tests, `git check-ignore content/gallery/cloud-file-map.json`, and t
 - Consumes: four Task 5 records and existing Milestone 6 repository/controller/pages.
 - Produces: regression evidence for guest list, search, filter, detail and local copy behavior.
 
-- [ ] **Step 1: Add fixture-driven flow tests**
+- [x] **Step 1: Add fixture-driven flow tests**
 
 Assert four lightweight summaries, exact-name search, each of four usage filters, detail metadata, preview resolution, payload download-on-use only and persistent independent local copies. Assert identity runtime is never invoked.
 
-- [ ] **Step 2: Run focused tests and inspect failures**
+- [x] **Step 2: Run focused tests and inspect failures**
 
 Run: `npm test -- tests/gallery tests/smoke/gallery-ui-contract.test.ts`
 
-- [ ] **Step 3: Apply only demonstrated compatibility fixes**
+- [x] **Step 3: Apply only demonstrated compatibility fixes**
 
 If production content exposes a real contract mismatch, retain the failing test and change only the responsible adapter/controller/view. Do not add editor, export or cloud-save behavior.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Re-run the focused command. If no production change was needed, commit only tests with `test(gallery): cover pilot content flow`; otherwise use `fix(gallery): support pilot content flow`.
 
@@ -279,13 +279,13 @@ Re-run the focused command. If no production change was needed, commit only test
 - Consumes: all Milestone 7 deliverables.
 - Produces: reviewed GitHub tag plus an exact HBuilderX deployment package and acceptance checklist.
 
-- [ ] **Step 1: Run the complete automated gate**
+- [x] **Step 1: Run the complete automated gate**
 
 Run: `npm run check` and `npm run build:h5`.
 
 Expected: all tests, lint, type checks, content/cloud validation and both production builds exit `0`.
 
-- [ ] **Step 2: Inspect generated assets and secrets**
+- [x] **Step 2: Inspect generated assets and secrets**
 
 Verify four payloads, four cards, four detail PNGs, twelve upload-manifest entries and four JSONL pattern lines after a synthetic mapping. Use `git grep` over tracked files; do not recursively scan the ignored real uni-id config or cloud mapping.
 
