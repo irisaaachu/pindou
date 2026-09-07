@@ -12,9 +12,9 @@ import type {
   GalleryResult,
   GenerationEngine,
   GenerationRequest,
-  GenerationResult,
   GalleryPayloadSource,
   GalleryRepository,
+  PhotoGenerationResult,
   ProjectExporter,
   ProjectRepository,
   ProjectSummary,
@@ -49,11 +49,22 @@ class MemoryProjectRepository implements ProjectRepository {
 }
 
 class DeterministicGenerationEngine implements GenerationEngine {
-  async generate(request: GenerationRequest): Promise<GenerationResult> {
+  async generate(request: GenerationRequest): Promise<PhotoGenerationResult> {
     return {
-      width: request.targetWidth,
-      height: request.targetHeight,
-      cells: Array(request.targetWidth * request.targetHeight).fill(null),
+      grid: {
+        width: request.settings.shortSide,
+        height: request.settings.shortSide,
+        palette: { id: "mard-221", version: "2026.09-pinned" },
+        cells: Array(request.settings.shortSide ** 2).fill(null),
+      },
+      summary: {
+        beadCount: request.settings.shortSide ** 2,
+        colorCount: 0,
+        physicalWidthMm: request.settings.shortSide * 5,
+        physicalHeightMm: request.settings.shortSide * 5,
+        recommendedMode: "realistic" as const,
+        elapsedMs: 0,
+      },
     };
   }
 }
@@ -118,23 +129,51 @@ describe("domain module contracts", () => {
     expect(await repository.get(validPhotoProject.id)).toBeNull();
   });
 
-  test("allows generation without platform image APIs", async () => {
+  test("allows page-local photo generation without platform image APIs", async () => {
     const engine: GenerationEngine = new DeterministicGenerationEngine();
     const result = await engine.generate({
       image: {
         width: 1,
         height: 1,
         data: new Uint8ClampedArray([255, 255, 255, 255]),
+        source: "album",
       },
-      targetWidth: 2,
-      targetHeight: 1,
-      palette: { id: "mard", version: "2026-01" },
-      settings: validPhotoProject.source.type === "photo"
-        ? validPhotoProject.source.settings
-        : neverSettings(),
+      crop: {
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        scale: 1,
+        translateX: 0,
+        translateY: 0,
+        ratioMode: "auto",
+      },
+      settings: {
+        shortSide: 29,
+        colorLimit: 12,
+        mode: "auto",
+        removeBackground: true,
+        dithering: false,
+        cleanupIsolated: true,
+      },
     });
 
-    expect(result).toEqual({ width: 2, height: 1, cells: [null, null] });
+    expect(result).toEqual({
+      grid: {
+        width: 29,
+        height: 29,
+        palette: { id: "mard-221", version: "2026.09-pinned" },
+        cells: Array(29 * 29).fill(null),
+      },
+      summary: {
+        beadCount: 29 * 29,
+        colorCount: 0,
+        physicalWidthMm: 145,
+        physicalHeightMm: 145,
+        recommendedMode: "realistic",
+        elapsedMs: 0,
+      },
+    });
   });
 
   test("returns a platform-neutral export artifact", async () => {
@@ -165,7 +204,3 @@ describe("domain module contracts", () => {
     })).toEqual({ ok: true, data: "{}" });
   });
 });
-
-function neverSettings(): never {
-  throw new Error("Expected a photo fixture");
-}

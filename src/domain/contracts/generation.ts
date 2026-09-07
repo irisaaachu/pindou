@@ -1,29 +1,16 @@
 import type {
-  PaletteReference,
-  PhotoGenerationSettings,
-  ProjectCell,
-} from "../project";
-
-export interface DecodedImagePixels {
-  width: number;
-  height: number;
-  data: Uint8ClampedArray;
-}
+  CropTransform,
+  GenerationSettings,
+  PhotoGenerationResult,
+  PhotoInput,
+} from "../photo-generation";
 
 export interface GenerationRequest {
-  image: DecodedImagePixels;
-  targetWidth: number;
-  targetHeight: number;
-  palette: PaletteReference;
-  settings: PhotoGenerationSettings;
-}
-
-export interface GenerationResult {
-  width: number;
-  height: number;
-  cells: ProjectCell[];
+  image: PhotoInput;
+  crop: CropTransform;
+  settings: GenerationSettings;
 }
 
 export interface GenerationEngine {
-  generate(request: GenerationRequest): Promise<GenerationResult>;
+  generate(request: GenerationRequest): Promise<PhotoGenerationResult>;
 }

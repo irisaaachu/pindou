@@ -39,6 +39,7 @@ const creationEntries: CreationEntry[] = [
 ];
 
 function openEntry(entry: CreationEntry): void {
+  if (entry.id === "photo") uni.navigateTo({ url: "/pages/photo-generator/index" });
   if (entry.id === "gallery") uni.navigateTo({ url: "/pages/gallery/index" });
 }
 </script>
@@ -68,7 +69,7 @@ function openEntry(entry: CreationEntry): void {
         <text class="eyebrow">Create your way</text>
         <text class="section-title">从哪里开始？</text>
       </view>
-      <text class="section-heading__note">图库已开放，其他入口将按 Milestone 逐步接入</text>
+      <text class="section-heading__note">照片生成器与图库已开放</text>
     </view>
 
     <view class="entry-grid">
@@ -86,7 +87,7 @@ function openEntry(entry: CreationEntry): void {
           <text class="entry-card__title">{{ entry.title }}</text>
           <text class="entry-card__copy">{{ entry.description }}</text>
         </view>
-        <text class="entry-card__status">{{ entry.id === "gallery" ? "进入图库" : "功能建设中" }}</text>
+        <text class="entry-card__status">{{ entry.id === "photo" ? "开始生成" : entry.id === "gallery" ? "进入图库" : "功能建设中" }}</text>
       </view>
     </view>
 
