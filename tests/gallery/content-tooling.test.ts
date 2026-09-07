@@ -282,6 +282,21 @@ describe("gallery content tooling", () => {
     }
   });
 
+  test("accepts Alibaba uniCloud HTTPS file IDs", () => {
+    const mapping = Object.fromEntries(
+      Object.keys(cloudFileMap(publishedCatalog)).map((key, index) => [
+        key,
+        `https://example.cdn.bspapp.com/cloudstorage/gallery-${index}`,
+      ]),
+    );
+
+    const resolved = resolveCloudAssetRefs(publishedCatalog, mapping);
+
+    expect(resolved.patterns[0]?.payload.fileRef).toMatch(/^https:\/\//);
+    expect(resolved.patterns[0]?.coverRef).toMatch(/^https:\/\//);
+    expect(resolved.patterns[0]?.previewRef).toMatch(/^https:\/\//);
+  });
+
   test("keeps the real cloud file map ignored and the copyable example account-safe", async () => {
     const examplePath = "content/gallery/cloud-file-map.example.json";
     const realMapPath = "content/gallery/cloud-file-map.json";

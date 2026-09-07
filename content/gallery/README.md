@@ -8,4 +8,4 @@ The four pilot records are original Pindou Studio work at version `1.0.0` and us
 
 Run `node scripts/gallery/build-gallery-upload-manifest.mjs` to create `generated/gallery-import/asset-upload-manifest.json`. It contains exactly twelve logical upload keys and repository-relative source paths: each pattern's payload, card preview and detail preview. It has no cloud file IDs, credentials or account-specific values.
 
-The generated import files contain only the field names accepted by the database schemas. They are local deployment artifacts: this tooling never stores credentials or uploads content.
+The generated import files contain only the field names accepted by the database schemas. The local cloud-file map accepts `cloud://` file IDs as well as the direct HTTPS file IDs returned by Alibaba uniCloud storage. They are local deployment artifacts: this tooling never stores credentials or uploads content.

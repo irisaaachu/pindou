@@ -23,7 +23,7 @@ export function resolveCloudAssetRefs(catalog, mapping) {
   if (values.some((value) => typeof value !== "string" || value.trim() === "")) {
     throw new Error("Cloud file map contains blank cloud file IDs.");
   }
-  if (values.some((value) => !value.startsWith("cloud://") || value.slice("cloud://".length).trim() === "")) {
+  if (values.some((value) => !isSupportedFileId(value))) {
     throw new Error("Cloud file map contains non-cloud references.");
   }
   if (values.some((value) => /[\s\p{Cc}]/u.test(value))) {
@@ -124,6 +124,16 @@ async function readCloudFileMap(arguments_) {
 
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSupportedFileId(value) {
+  if (value.startsWith("cloud://")) return value.slice("cloud://".length).trim() !== "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname !== "" && url.username === "" && url.password === "";
+  } catch {
+    return false;
+  }
 }
 
 function parsePayload(asset) {
