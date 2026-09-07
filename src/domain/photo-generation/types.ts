@@ -1,14 +1,8 @@
-import {
-  MVP_BEAD_SIZE_MM,
-  type PaletteReference,
-  type ProjectCell,
-} from "../project/types";
+import type { PaletteReference, ProjectCell } from "../project/types";
 
 export type ShortSidePreset = 29 | 58 | 87;
 export type ColorLimit = 12 | 24 | 36;
 export type GenerationMode = "auto" | "cartoon" | "realistic";
-
-export const PHOTO_BEAD_SIZE_MM = MVP_BEAD_SIZE_MM;
 
 export interface PhotoInput {
   width: number;

@@ -15,6 +15,14 @@ describe("calculateGridSize", () => {
     expect(() => calculateGridSize(0, 900, 58)).toThrow("INVALID_CROP_SIZE");
   });
 
+  test.each([-1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "rejects an invalid crop dimension of %s",
+    (dimension) => {
+      expect(() => calculateGridSize(dimension, 900, 58)).toThrow("INVALID_CROP_SIZE");
+      expect(() => calculateGridSize(900, dimension, 58)).toThrow("INVALID_CROP_SIZE");
+    },
+  );
+
   test("rejects a short side outside the supported presets", () => {
     expect(() => calculateGridSize(900, 900, 30 as 29)).toThrow("INVALID_SHORT_SIDE");
   });
