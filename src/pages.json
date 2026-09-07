@@ -19,6 +19,10 @@
     {
       "path": "pages/gallery/detail",
       "style": { "navigationBarTitleText": "图纸详情" }
+    },
+    {
+      "path": "pages/photo-generator/index",
+      "style": { "navigationBarTitleText": "照片生成拼豆图纸" }
     }
   ],
   "globalStyle": {
