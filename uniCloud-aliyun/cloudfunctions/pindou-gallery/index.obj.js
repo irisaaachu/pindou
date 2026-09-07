@@ -1,6 +1,7 @@
 "use strict";
 
 const { success } = require("pindou-cloud-common");
+const { resolveAssetUrls } = require("./gallery-assets");
 const {
   buildCategoryQuery,
   buildPatternQuery,
@@ -119,21 +120,11 @@ async function resolveDetailAssets(detail) {
 }
 
 async function resolveTempUrls(fileList) {
-  if (fileList.some((file) => typeof file !== "string" || !file)) throw publicError("ASSET_UNAVAILABLE");
-  let response;
   try {
-    response = await uniCloud.getTempFileURL({ fileList });
+    return await resolveAssetUrls(fileList, (options) => uniCloud.getTempFileURL(options));
   } catch {
     throw publicError("ASSET_UNAVAILABLE");
   }
-  const urls = {};
-  for (const file of response && response.fileList || []) {
-    if (file && typeof file.fileID === "string" && typeof file.tempFileURL === "string" && file.tempFileURL) {
-      urls[file.fileID] = file.tempFileURL;
-    }
-  }
-  if (fileList.some((file) => !urls[file])) throw publicError("ASSET_UNAVAILABLE");
-  return urls;
 }
 
 function sortTuple(record, orderBy) {
