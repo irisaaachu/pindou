@@ -5,6 +5,7 @@ export * from "./color-space";
 export * from "./background";
 export * from "./cleanup";
 export * from "./dither";
+export * from "./engine";
 export * from "./mard-palette";
 export * from "./mode";
 export * from "./palette-selection";
