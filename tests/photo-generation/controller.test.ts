@@ -60,14 +60,31 @@ describe("photo generation controller", () => {
     expect(engine.generate).toHaveBeenCalledTimes(1);
     controller.updateSettings({ colorLimit: 12 });
     expect(state.hasPendingSettings).toBe(true);
+    expect(state.view.status).toBe("ready");
     resolvers[0](result);
     await first;
-    expect(state.view.status).toBe("generating");
+    expect(state.view.status).toBe("ready");
     const second = controller.regenerate();
     resolvers[1](result);
     await second;
     expect(state.view.status).toBe("ready");
     expect(state.hasPendingSettings).toBe(false);
+  });
+
+  test("does not interrupt an active generation when replacement is cancelled", async () => {
+    let resolve!: (value: typeof result) => void;
+    const engine: GenerationEngine = { generate: vi.fn().mockImplementation(() => new Promise((done) => { resolve = done; })) };
+    const media = adapter({ choose: vi.fn().mockRejectedValue(new PhotoMediaError("CANCELLED")) });
+    const state = createInitialPhotoGenerationState();
+    state.view = { status: "ready", image, crop: suggestCrop(image, "original"), result };
+    state.hasPendingSettings = true;
+    const controller = createPhotoGenerationController({ media, engine }, state);
+    const generation = controller.regenerate();
+    await controller.replacePhoto("album");
+    expect(state.view.status).toBe("generating");
+    resolve(result);
+    await generation;
+    expect(state.view.status).toBe("ready");
   });
 
   test("keeps the current result when replacement selection is cancelled", async () => {
