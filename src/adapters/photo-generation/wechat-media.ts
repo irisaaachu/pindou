@@ -76,6 +76,7 @@ export function createWeChatMediaAdapter(platform: PhotoMediaPlatform): PhotoMed
         }
       }
 
+      if (decodedResource) platform.releaseImage(decodedResource);
       decodedResource = decoded;
       return applyOrientation({
         width: decoded.width,
