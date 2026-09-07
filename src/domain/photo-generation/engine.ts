@@ -1,4 +1,4 @@
-import type { GenerationEngine, GenerationRequest } from "../contracts/generation";
+import type { GenerationEngine } from "../contracts/generation";
 import { removeEdgeConnectedBackground } from "./background";
 import { cleanupIsolatedCells } from "./cleanup";
 import { constrainCrop } from "./crop";
