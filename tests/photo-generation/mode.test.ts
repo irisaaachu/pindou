@@ -7,5 +7,6 @@ describe("recommendMode", () => {
   test("recommends cartoon for flat regions and realistic for continuous gradients", () => {
     expect(recommendMode([cell(10, 45), cell(8, 50), cell(12, 40)])).toBe("cartoon");
     expect(recommendMode([cell(700, 8, 20), cell(900, 10, 100), cell(800, 9, 180)])).toBe("realistic");
+    expect(recommendMode([cell(20, 30, 20), cell(20, 30, 70), cell(20, 30, 120), cell(20, 30, 170)])).toBe("realistic");
   });
 });

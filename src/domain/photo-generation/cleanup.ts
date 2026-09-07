@@ -8,12 +8,12 @@ export function cleanupIsolatedCells(codes: readonly (string | null)[], width: n
     if (!code) return null;
     const neighbors = neighborIndexes(index, width, height).map((neighbor) => codes[neighbor]).filter((value): value is string => value !== null);
     if (neighbors.includes(code) || neighbors.length === 0) return code;
-    const counts = new Map<string, number>();
-    for (const neighbor of neighbors) counts.set(neighbor, (counts.get(neighbor) ?? 0) + 1);
-    const replacement = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
-    const currentColor = colors.get(code), replacementColor = colors.get(replacement);
-    if (!currentColor || !replacementColor || ciede2000(currentColor, replacementColor) > 12) return code;
-    return replacement;
+    const currentColor = colors.get(code);
+    if (!currentColor) return code;
+    const candidates = [...new Set(neighbors)].map((neighbor) => colors.get(neighbor)).filter((color): color is MardLabColor => color !== undefined);
+    const replacement = candidates.sort((first, second) => ciede2000(currentColor, first) - ciede2000(currentColor, second) || first.code.localeCompare(second.code))[0];
+    if (!replacement || ciede2000(currentColor, replacement) > 12) return code;
+    return replacement.code;
   });
 }
 

@@ -12,7 +12,7 @@ describe("sampleRegions", () => {
   test("realistic sampling averages every source pixel in each region", () => {
     const input = image(Array.from({ length: 16 }, (_, index) => [index * 10, index * 10, index * 10, 255]));
     const result = sampleRegions(input, crop, 2, 2, "realistic");
-    expect(result.map(({ red }) => red)).toEqual([25, 45, 105, 125]);
+    expect(result.map(({ red }) => red)).toEqual([31, 50, 107, 127]);
   });
 
   test("cartoon sampling selects the deterministic dominant color bucket", () => {

@@ -162,4 +162,16 @@ describe("createWeChatMediaAdapter", () => {
     expect(dependencies.releaseImage).toHaveBeenCalledTimes(1);
     expect(dependencies.releaseImage).toHaveBeenCalledWith(first);
   });
+
+  test("releases a decode that completes after disposal", async () => {
+    let resolve!: (value: DecodedMedia) => void;
+    const late = decoded();
+    const dependencies = platform({ decodeImage: vi.fn().mockImplementation(() => new Promise((done) => { resolve = done; })) });
+    const adapter = createWeChatMediaAdapter(dependencies);
+    const pending = adapter.decode({ source: "album", filePath: "wxfile://selected-private-photo.jpg" });
+    adapter.release();
+    resolve(late);
+    await expectPublicError(pending, "CANCELLED");
+    expect(dependencies.releaseImage).toHaveBeenCalledWith(late);
+  });
 });

@@ -12,4 +12,7 @@ test("replaces only low-contrast one-cell islands", () => {
   expect(high[4]).toBe(far.code);
   expect(cleanupIsolatedCells([null, base.code], 2, 1, palette)[0]).toBeNull();
   expect(cleanupIsolatedCells([near.code, near.code, base.code], 3, 1, palette).slice(0, 2)).toEqual([near.code, near.code]);
+
+  const mixed = cleanupIsolatedCells([far.code, far.code, base.code, far.code, near.code, far.code, base.code, base.code, base.code], 3, 3, palette);
+  expect(mixed[4]).toBe(base.code);
 });

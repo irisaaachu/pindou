@@ -59,17 +59,27 @@ function summarize(pixels: Pixel[], strategy: SamplingStrategy): SampledCell {
 
 function meanColor(pixels: Pixel[]): Pixel {
   const sums = pixels.reduce((total, pixel) => ({
-    red: total.red + pixel.red,
-    green: total.green + pixel.green,
-    blue: total.blue + pixel.blue,
+    red: total.red + srgbToLinear(pixel.red),
+    green: total.green + srgbToLinear(pixel.green),
+    blue: total.blue + srgbToLinear(pixel.blue),
     alpha: total.alpha + pixel.alpha,
   }), { red: 0, green: 0, blue: 0, alpha: 0 });
   return {
-    red: Math.round(sums.red / pixels.length),
-    green: Math.round(sums.green / pixels.length),
-    blue: Math.round(sums.blue / pixels.length),
+    red: linearToSrgb(sums.red / pixels.length),
+    green: linearToSrgb(sums.green / pixels.length),
+    blue: linearToSrgb(sums.blue / pixels.length),
     alpha: Math.round(sums.alpha / pixels.length),
   };
+}
+
+function srgbToLinear(value: number): number {
+  const channel = value / 255;
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function linearToSrgb(value: number): number {
+  const channel = value <= 0.0031308 ? value * 12.92 : 1.055 * value ** (1 / 2.4) - 0.055;
+  return Math.round(Math.max(0, Math.min(1, channel)) * 255);
 }
 
 function dominantColor(pixels: Pixel[]): Pixel {

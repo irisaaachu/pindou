@@ -31,7 +31,7 @@ export interface PhotoGenerationController {
 }
 
 export function createInitialPhotoGenerationState(): PhotoGenerationState {
-  return { view: { status: "idle" }, settings: { shortSide: 58, colorLimit: 24, mode: "auto", removeBackground: false, dithering: false, cleanupIsolated: true }, previewMode: "round", hasPendingSettings: false };
+  return { view: { status: "idle" }, settings: { shortSide: 58, colorLimit: 24, mode: "auto", removeBackground: true, dithering: false, cleanupIsolated: true }, previewMode: "round", hasPendingSettings: false };
 }
 
 export function createPhotoGenerationController(dependencies: PhotoGenerationControllerDependencies, state: PhotoGenerationState): PhotoGenerationController {
@@ -59,6 +59,7 @@ export function createPhotoGenerationController(dependencies: PhotoGenerationCon
   async function generate(): Promise<void> {
     const current = state.view;
     if (current.status !== "cropping" && current.status !== "generating" && current.status !== "ready" && current.status !== "failure") return;
+    if (current.status === "generating" && !state.hasPendingSettings) return;
     if (current.status === "failure" && (!current.image || !current.crop)) return;
     const image = current.status === "failure" ? current.image! : current.image;
     const crop = current.status === "failure" ? current.crop! : current.crop;
@@ -80,12 +81,11 @@ export function createPhotoGenerationController(dependencies: PhotoGenerationCon
 
   function updateSettings(settings: Partial<GenerationSettings>): void {
     state.settings = { ...state.settings, ...settings };
-    if (state.view.status === "ready") state.hasPendingSettings = true;
+    if (state.view.status === "ready" || state.view.status === "generating") state.hasPendingSettings = true;
+    if (state.view.status === "generating") job += 1;
   }
 
   async function replacePhoto(source: PhotoSource): Promise<void> {
-    dependencies.media.release();
-    state.view = { status: "idle" };
     await choosePhoto(source);
   }
 

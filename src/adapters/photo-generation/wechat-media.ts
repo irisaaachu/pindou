@@ -43,6 +43,7 @@ function pickerError(error: unknown): PhotoMediaError {
 
 export function createWeChatMediaAdapter(platform: PhotoMediaPlatform): PhotoMediaAdapter {
   let decodedResource: DecodedMedia | undefined;
+  let decodeIdentity = 0;
 
   return {
     async choose(source) {
@@ -63,6 +64,7 @@ export function createWeChatMediaAdapter(platform: PhotoMediaPlatform): PhotoMed
     },
 
     async decode(selection) {
+      const identity = ++decodeIdentity;
       let decoded: DecodedMedia;
       try {
         decoded = await platform.decodeImage(selection.filePath, 2048);
@@ -76,6 +78,10 @@ export function createWeChatMediaAdapter(platform: PhotoMediaPlatform): PhotoMed
         }
       }
 
+      if (identity !== decodeIdentity) {
+        platform.releaseImage(decoded);
+        throw new PhotoMediaError("CANCELLED");
+      }
       if (decodedResource) platform.releaseImage(decodedResource);
       decodedResource = decoded;
       return applyOrientation({
@@ -87,6 +93,7 @@ export function createWeChatMediaAdapter(platform: PhotoMediaPlatform): PhotoMed
     },
 
     release() {
+      decodeIdentity += 1;
       if (!decodedResource) return;
       platform.releaseImage(decodedResource);
       decodedResource = undefined;
